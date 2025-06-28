@@ -10,9 +10,9 @@ import { Label } from '@/components/ui/label';
 import AuthLayout from '@/layouts/auth-layout';
 
 const ROLES = [
-    { value: 'Admin', label: 'Admin' },
-    { value: 'IT Agent', label: 'IT Agent' },
-    { value: 'Staff', label: 'Staff' },
+    { value: 1, label: 'Admin' },
+    { value: 2, label: 'IT Agent' },
+    { value: 3, label: 'Staff' },
 ];
 
 type RegisterForm = {
@@ -20,7 +20,7 @@ type RegisterForm = {
     email: string;
     password: string;
     password_confirmation: string;
-    role: string;
+    role: number;
 };
 
 export default function Register() {
@@ -78,22 +78,23 @@ export default function Register() {
                     </div>
 
                     <div className="grid gap-2">
-                        <Label htmlFor="role">Role</Label>
-                        <select
-                            id="role"
-                            required
-                            tabIndex={3}
-                            value={data.role}
-                            onChange={e => setData('role', e.target.value)}
-                            disabled={processing}
-                            className="border rounded px-3 py-2"
-                        >
+                        <Label>Role</Label>
+                        <div className="flex gap-4">
                             {ROLES.map(role => (
-                                <option key={role.value} value={role.value}>
-                                    {role.label}
-                                </option>
+                                <label key={role.value} className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        id="role"
+                                        type="radio"
+                                        name="role"
+                                        value={role.value}
+                                        onChange={e => setData('role', Number(e.target.value))}
+                                        disabled={processing}
+                                        className="form-radio h-4 w-4 text-[#071A22] border-gray-300 focus:ring-[#071A22]"
+                                    />
+                                    <span>{role.label}</span>
+                                </label>
                             ))}
-                        </select>
+                        </div>
                         <InputError message={errors.role} />
                     </div>
 

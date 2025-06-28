@@ -2,6 +2,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 class CreateRolesTable extends Migration
 {
@@ -12,6 +13,8 @@ class CreateRolesTable extends Migration
             $table->string('name')->unique(); // Admin, IT Agent, Staff
             $table->timestamps();
         });
+
+        DB::table('roles')->get();
     }
 
     public function down()

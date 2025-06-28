@@ -39,17 +39,25 @@ class LoginRequest extends FormRequest
      */
     public function authenticate(): void
     {
-        $this->ensureIsNotRateLimited();
+        $credentials = $this->only('email', 'password');
+        $role = $this->input('role');
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
-            RateLimiter::hit($this->throttleKey());
+        $user = \App\Models\User::where('email', $credentials['email'])->first();
 
+        if (!$user || !\Hash::check($credentials['password'], $user->password)) {
             throw ValidationException::withMessages([
                 'email' => __('auth.failed'),
             ]);
         }
 
-        RateLimiter::clear($this->throttleKey());
+        // Check role match
+        if ($user->role && $user->role->name !== $role) {
+            throw ValidationException::withMessages([
+                'role' => 'You do not have permission to log in as this role.',
+            ]);
+        }
+
+        Auth::login($user, $this->boolean('remember'));
     }
 
     /**

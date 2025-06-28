@@ -9,17 +9,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-const ROLES = [
-    { value: 'Admin', label: 'Admin' },
-    { value: 'IT Agent', label: 'IT Agent' },
-    { value: 'Staff', label: 'Staff' },
-];
-
 type LoginForm = {
-    role: string;
     email: string;
     password: string;
     remember: boolean;
+    role: string;
 };
 
 interface LoginProps {
@@ -27,12 +21,18 @@ interface LoginProps {
     canResetPassword: boolean;
 }
 
+const ROLES = [
+    { value: 'Admin', label: 'Admin' },
+    { value: 'IT Agent', label: 'IT Agent' },
+    { value: 'Staff', label: 'Staff' },
+];
+
 export default function Login({ status, canResetPassword }: LoginProps) {
     const { data, setData, post, processing, errors, reset } = useForm<LoginForm>({
-        role: ROLES[0].value,
         email: '',
         password: '',
         remember: false,
+        role: 'Admin', // default selected role
     });
 
     const submit: FormEventHandler = (e) => {
@@ -53,19 +53,25 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                         <p className="text-gray-300">Sign in to your account</p>
                     </div>
                     <form className="space-y-6" onSubmit={submit}>
+                        {/* Role selection */}
                         <div>
-                            <Label htmlFor="role" className="text-white">Login as</Label>
-                            <select
-                                id="role"
-                                value={data.role}
-                                onChange={e => setData('role', e.target.value)}
-                                className="mt-1 block w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-gray-900"
-                                disabled={processing}
-                            >
-                                {ROLES.map(role => (
-                                    <option key={role.value} value={role.value}>{role.label}</option>
+                            <Label className="text-white mb-2 block">Login as</Label>
+                            <div className="flex gap-4">
+                                {ROLES.map((roleOption) => (
+                                    <label key={roleOption.value} className="flex items-center text-white">
+                                        <input
+                                            type="radio"
+                                            name="role"
+                                            value={roleOption.value}
+                                            checked={data.role === roleOption.value}
+                                            onChange={e => setData('role', e.target.value)}
+                                            className="mr-2"
+                                            disabled={processing}
+                                        />
+                                        {roleOption.label}
+                                    </label>
                                 ))}
-                            </select>
+                            </div>
                             <InputError message={errors.role} />
                         </div>
                         <div>

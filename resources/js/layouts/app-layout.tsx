@@ -1,19 +1,27 @@
 import Sidebar from '@/components/ui/sidebar';
 import { Bell, User } from 'lucide-react';
 import { useState, useRef, useEffect, type ReactNode } from 'react';
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 
-const user = {
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    avatar: '',
+type AppLayoutProps = {
+    children: ReactNode;
 };
 
-interface AppLayoutProps {
-    children: ReactNode;
-}
+type Auth = {
+    user: {
+        name: string;
+        email: string;
+        avatar?: string;
+    };
+};
 
 export default function AppLayout({ children }: AppLayoutProps) {
+    const { auth } = usePage().props as { auth?: Auth };
+    if (!auth) {
+        throw new Error("Auth prop is missing from page props.");
+    }
+    const user = auth.user;
+
     const [profileOpen, setProfileOpen] = useState(false);
     const profileRef = useRef<HTMLDivElement>(null);
 
@@ -34,18 +42,23 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }, [profileOpen]);
 
     return (
-        <div className="min-h-screen flex bg-gray-50">
-            {/* Sidebar */}
-            <aside className="w-64 bg-[#071A22] text-white flex flex-col py-8 px-4 min-h-screen">
+        <div className="min-h-screen bg-gray-50">
+            {/* Static Sidebar */}
+            <aside className="fixed top-0 left-0 w-64 h-screen bg-[#071A22] text-white flex flex-col py-8 px-4 z-30">
                 <Sidebar />
             </aside>
-            {/* Main Content */}
-            <div className="flex-1 flex flex-col">
-                {/* Topbar */}
-                <header className="flex items-center justify-end px-8 py-4 bg-white border-b border-gray-200">
+            {/* Main Content Area */}
+            <div className="ml-64 flex flex-col min-h-screen">
+                {/* Sticky Topbar */}
+                <header className="sticky top-0 z-20 flex items-center justify-end px-8 py-4 bg-white border-b border-gray-200">
                     <div className="flex items-center space-x-4">
                         {/* Notification Icon */}
-                        <button className="relative focus:outline-none">
+                        <button
+                            onClick={() => {
+                                router.post('/alert');
+                            }}
+                            className="relative focus:outline-none"
+                        >
                             <Bell className="w-6 h-6 text-[#071A22]" />
                             <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500"></span>
                         </button>
