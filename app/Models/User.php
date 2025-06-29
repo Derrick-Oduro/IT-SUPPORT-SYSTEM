@@ -10,6 +10,7 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     protected $fillable = ['name', 'email', 'password', 'role_id', 'location_id'];
+    protected $with = ['role'];
 
     public function role()
     {

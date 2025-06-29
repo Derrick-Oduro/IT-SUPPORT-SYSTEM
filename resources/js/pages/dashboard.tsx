@@ -1,10 +1,21 @@
 import AppLayout from '@/layouts/app-layout';
 import { Head, usePage } from '@inertiajs/react';
-import type { PageProps } from '@/types';
+
+type PageProps = {
+    auth: {
+        user: {
+            role?: {
+                name?: string;
+            };
+        };
+    };
+};
 
 export default function Dashboard() {
     const { auth } = usePage<PageProps>().props;
     const role = auth.user.role?.name;
+
+    console.log('Dashboard user:', auth.user);
 
     return (
         <AppLayout>
@@ -12,7 +23,7 @@ export default function Dashboard() {
             <h1 className="text-3xl font-bold mb-6 text-[#071A22]">Dashboard</h1>
             <div className="rounded-lg border border-gray-200 bg-white p-8 text-gray-700">
                 <div className="mb-4 font-semibold">
-                    Welcome, {role}! Here is your dashboard.
+                    Welcome, {role ?? 'User'}! Here is your dashboard.
                 </div>
                 {/* Add stats, charts, or widgets here */}
             </div>

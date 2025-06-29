@@ -11,13 +11,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Inertia::share('auth', function () {
-            $user = Auth::user();
-            if ($user) {
-                $user->load('role');
-                \Log::info('Shared user', ['user' => $user->toArray()]);
-            }
+            $user = Auth::id() ? \App\Models\User::with('role')->find(Auth::id()) : null;
             return [
-                'user' => $user,
+                'user' => $user ? $user->toArray() : null,
             ];
         });
     }
