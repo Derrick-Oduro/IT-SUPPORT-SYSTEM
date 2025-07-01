@@ -33,14 +33,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('settings', function () {
         return Inertia::render('settings');
     })->name('settings');
+
+    Route::get('users', [UsersController::class, 'index'])->name('users.index');
 });
 
-Route::middleware(['auth', 'role:Admin'])->group(function () {
-    Route::resource('users', UsersController::class)->except(['show', 'edit', 'update']);
-});
+//Route::middleware(['auth', 'role:Admin'])->group(function () {
+//Route::resource('users', UsersController::class)->except(['show', 'edit', 'update']);
+//});
 
-require __DIR__.'/settings.php';
-require __DIR__.'/auth.php';
+require __DIR__ . '/settings.php';
+require __DIR__ . '/auth.php';
+require __DIR__ . '/api.php';
 
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');

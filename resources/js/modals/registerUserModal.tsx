@@ -1,19 +1,23 @@
-import { Head, useForm } from '@inertiajs/react';
+import { useState } from 'react';
+import { useForm } from '@inertiajs/react';
 import { LoaderCircle } from 'lucide-react';
-import { FormEventHandler } from 'react';
 
 import InputError from '@/components/input-error';
-import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import AuthLayout from '@/layouts/auth-layout';
 
 const ROLES = [
     { value: 1, label: 'Admin' },
     { value: 2, label: 'IT Agent' },
     { value: 3, label: 'Staff' },
 ];
+
+type RegisterUserModalProps = {
+    show: boolean;
+    onClose: () => void;
+    onSuccess: () => void;
+};
 
 type RegisterForm = {
     name: string;
@@ -23,7 +27,7 @@ type RegisterForm = {
     role: number;
 };
 
-export default function Register() {
+export default function RegisterUserModal({ show, onClose, onSuccess }: RegisterUserModalProps) {
     const { data, setData, post, processing, errors, reset } = useForm<RegisterForm>({
         name: '',
         email: '',
@@ -32,18 +36,39 @@ export default function Register() {
         role: ROLES[0].value,
     });
 
-    const submit: FormEventHandler = (e) => {
+    if (!show) return null;
+
+    const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
         post(route('register'), {
-            onFinish: () => reset('password', 'password_confirmation'),
+            onSuccess: () => {
+                console.log("Begin user data submission");
+                reset('password', 'password_confirmation');
+                onSuccess();
+                onClose();
+            },
+            onError: (errors) => {
+                // Errors are automatically handled by Inertia
+                console.error('Registration errors:', errors);
+            },
         });
     };
 
     return (
-        <AuthLayout title="Create an account" description="Enter your details below to create your account">
-            <Head title="Register" />
-            <form className="flex flex-col gap-6" onSubmit={submit}>
-                <div className="grid gap-6">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold">Add New User</h2>
+                    <button
+                        onClick={onClose}
+                        className="text-gray-500 hover:text-gray-700"
+                    >
+                        &times;
+                    </button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                     <div className="grid gap-2">
                         <Label htmlFor="name">Name</Label>
                         <Input
@@ -51,14 +76,12 @@ export default function Register() {
                             type="text"
                             required
                             autoFocus
-                            tabIndex={1}
-                            autoComplete="name"
                             value={data.name}
                             onChange={(e) => setData('name', e.target.value)}
                             disabled={processing}
                             placeholder="Full name"
                         />
-                        <InputError message={errors.name} className="mt-2" />
+                        <InputError message={errors.name} className="mt-1" />
                     </div>
 
                     <div className="grid gap-2">
@@ -67,15 +90,13 @@ export default function Register() {
                             id="email"
                             type="email"
                             required
-                            tabIndex={2}
-                            autoComplete="email"
                             value={data.email}
                             onChange={(e) => setData('email', e.target.value)}
                             disabled={processing}
                             placeholder="email@example.com"
                         />
                         <InputError message={errors.email} />
-                    </div>1
+                    </div>
 
                     <div className="grid gap-2">
                         <Label>Role</Label>
@@ -83,11 +104,11 @@ export default function Register() {
                             {ROLES.map(role => (
                                 <label key={role.value} className="flex items-center gap-2 cursor-pointer">
                                     <input
-                                        id="role"
                                         type="radio"
                                         name="role"
                                         value={role.value}
-                                        onChange={e => setData('role', Number(e.target.value))}
+                                        checked={data.role === role.value}
+                                        onChange={() => setData('role', role.value)}
                                         disabled={processing}
                                         className="form-radio h-4 w-4 text-[#071A22] border-gray-300 focus:ring-[#071A22]"
                                     />
@@ -104,8 +125,6 @@ export default function Register() {
                             id="password"
                             type="password"
                             required
-                            tabIndex={4}
-                            autoComplete="new-password"
                             value={data.password}
                             onChange={(e) => setData('password', e.target.value)}
                             disabled={processing}
@@ -120,8 +139,6 @@ export default function Register() {
                             id="password_confirmation"
                             type="password"
                             required
-                            tabIndex={5}
-                            autoComplete="new-password"
                             value={data.password_confirmation}
                             onChange={(e) => setData('password_confirmation', e.target.value)}
                             disabled={processing}
@@ -130,19 +147,26 @@ export default function Register() {
                         <InputError message={errors.password_confirmation} />
                     </div>
 
-                    <Button type="submit" className="mt-2 w-full" tabIndex={6} disabled={processing}>
-                        {processing && <LoaderCircle className="h-4 w-4 animate-spin" />}
-                        Create account
-                    </Button>
-                </div>
-
-                <div className="text-center text-sm text-muted-foreground">
-                    Already have an account?{' '}
-                    <TextLink href={route('login')} tabIndex={7}>
-                        Log in
-                    </TextLink>
-                </div>
-            </form>
-        </AuthLayout>
+                    <div className="flex justify-end gap-2 mt-4">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="bg-gray-500 hover:bg-gray-700 text-white py-2 px-4 rounded"
+                            disabled={processing}
+                        >
+                            Cancel
+                        </button>
+                        <Button
+                            type="submit"
+                            className="bg-green-500 hover:bg-green-700 text-white"
+                            disabled={processing}
+                        >
+                            {processing && <LoaderCircle className="h-4 w-4 mr-2 animate-spin" />}
+                            Save User
+                        </Button>
+                    </div>
+                </form>
+            </div>
+        </div>
     );
 }
