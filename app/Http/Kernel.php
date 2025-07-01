@@ -7,7 +7,7 @@ use Illuminate\Foundation\Http\Kernel as HttpKernel;
 class Kernel extends HttpKernel
 {
     protected $routeMiddleware = [
-        // ...existing middleware...
+        // ...other middleware...
         'role' => \App\Http\Middleware\EnsureRole::class,
     ];
 }

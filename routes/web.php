@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\UsersController;
 
 Route::get('/', function () {
     return Inertia::render('welcome');
@@ -12,10 +13,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
-
-    Route::get('users', function () {
-        return Inertia::render('users');
-    })->name('users');
 
     Route::get('tickets', function () {
         return Inertia::render('tickets');
@@ -36,6 +33,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('settings', function () {
         return Inertia::render('settings');
     })->name('settings');
+});
+
+Route::middleware(['auth', 'role:Admin'])->group(function () {
+    Route::resource('users', UsersController::class)->except(['show', 'edit', 'update']);
 });
 
 require __DIR__.'/settings.php';
