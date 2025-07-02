@@ -41,7 +41,7 @@ export default function RegisterUserModal({ show, onClose, onSuccess }: Register
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        post(route('register'), {
+        post(route('create-user'), {
             onSuccess: () => {
                 console.log("Begin user data submission");
                 reset('password', 'password_confirmation');
