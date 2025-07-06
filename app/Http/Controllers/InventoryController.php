@@ -6,6 +6,7 @@ use App\Models\InventoryItem;
 use App\Models\ItemCategory;
 use App\Models\UnitOfMeasure;
 use App\Models\InventoryTransaction;
+use App\Models\Location;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -60,8 +61,8 @@ class InventoryController extends Controller
                 $search = $request->search;
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('sku', 'like', "%{$search}%")
-                      ->orWhere('description', 'like', "%{$search}%");
+                        ->orWhere('sku', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%");
                 });
             }
 
@@ -70,12 +71,14 @@ class InventoryController extends Controller
             // Get categories and units for dropdowns
             $categories = ItemCategory::orderBy('name')->get();
             $units = UnitOfMeasure::orderBy('name')->get();
+            $locations = Location::where('is_active', true)->orderBy('name')->get();
 
             // Return structured response
             return response()->json([
                 'items' => $items,
                 'categories' => $categories,
-                'units' => $units
+                'units' => $units,
+                'locations' => $locations,
             ]);
         } catch (\Exception $e) {
             \Log::error('Error fetching inventory data: ' . $e->getMessage());

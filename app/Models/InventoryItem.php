@@ -19,7 +19,7 @@ class InventoryItem extends Model
         'reorder_level',
         'unit_price',
         'is_active',
-        'location',
+        'location_id',
         'image_path',
         'created_by',
         'updated_by'
@@ -55,5 +55,10 @@ class InventoryItem extends Model
     public function transactions()
     {
         return $this->hasMany(InventoryTransaction::class, 'item_id');
+    }
+
+    public function location()
+    {
+        return $this->belongsTo(Location::class, 'location_id');
     }
 }

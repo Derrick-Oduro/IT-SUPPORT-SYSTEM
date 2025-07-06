@@ -57,6 +57,13 @@ type InventoryItem = {
     updated_at: string;
 };
 
+type Location = {
+    id: number;
+    name: string;
+    address: string;
+    // Add other location-specific fields here
+};
+
 export default function Inventory() {
     const { auth } = usePage<PageProps>().props;
     const role = auth.user.role?.name;
@@ -66,6 +73,7 @@ export default function Inventory() {
     const [filteredItems, setFilteredItems] = useState<InventoryItem[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [units, setUnits] = useState<UnitOfMeasure[]>([]);
+    const [locations, setLocations] = useState<Location[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('all');
@@ -109,6 +117,7 @@ export default function Inventory() {
                 setItems(response.data.items || []);
                 setCategories(response.data.categories || []);
                 setUnits(response.data.units || []);
+                setLocations(response.data.locations || []);
             })
             .catch(error => {
                 console.error('Error fetching inventory data:', error);
@@ -116,6 +125,7 @@ export default function Inventory() {
                 setItems([]);
                 setCategories([]);
                 setUnits([]);
+                setLocations([]);
             })
             .finally(() => {
                 setIsLoading(false);
@@ -261,10 +271,9 @@ export default function Inventory() {
 
     // Add this function to your inventory.tsx if you need to refresh location data
     const fetchLocations = () => {
-        axios.get('/api/locations')  // Note the /api prefix!
+        axios.get('/api/locations')
             .then(response => {
-                // Handle the updated locations data
-                console.log('Locations refreshed:', response.data);
+                setLocations(response.data || []); // <-- update the locations state!
             })
             .catch(error => {
                 console.error('Error fetching locations:', error);
@@ -596,6 +605,7 @@ export default function Inventory() {
                 onSuccess={fetchInventoryData}
                 categories={categories}
                 units={units}
+                locations={locations} // <-- Add this line
             />
 
             <EditItemModal
@@ -605,6 +615,7 @@ export default function Inventory() {
                 item={selectedItem}
                 categories={categories}
                 units={units}
+                locations={locations} // <-- Add this line
             />
 
             <AdjustQuantityModal
@@ -645,6 +656,7 @@ export default function Inventory() {
             <ViewLocationsModal
                 show={showViewLocationsModal}
                 onClose={() => setShowViewLocationsModal(false)}
+                locations={locations} // <-- Add this line
             />
         </AppLayout>
     );

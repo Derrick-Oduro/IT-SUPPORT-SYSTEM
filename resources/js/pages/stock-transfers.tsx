@@ -42,6 +42,7 @@ export default function StockTransfers() {
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         axios.get('/api/locations').then(res => setLocations(res.data));
@@ -50,7 +51,10 @@ export default function StockTransfers() {
     }, []);
 
     function fetchTransfers() {
-        axios.get('/api/stock-transfers').then(res => setTransfers(res.data));
+        setLoading(true);
+        axios.get('/api/stock-transfers')
+            .then(res => setTransfers(res.data))
+            .finally(() => setLoading(false));
     }
     function fetchTransactions() {
         axios.get('/api/stock-transactions').then(res => setTransactions(res.data));
@@ -121,6 +125,114 @@ export default function StockTransfers() {
                     Refresh
                 </button>
             </div>
+
+            {/* --- Transfer History Section --- */}
+            <section className="mb-10">
+                <div className="bg-white rounded-lg shadow-sm overflow-x-auto">
+                    <h2 className="text-lg font-semibold p-4 border-b">Transfer History</h2>
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <caption className="sr-only">Transfer History Table</caption>
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th className="px-4 py-2 text-left">Reference</th>
+                                <th className="px-4 py-2 text-left">Date</th>
+                                <th className="px-4 py-2 text-left">From</th>
+                                <th className="px-4 py-2 text-left">To</th>
+                                <th className="px-4 py-2 text-left">Item(s)</th>
+                                <th className="px-4 py-2 text-left">Qty</th>
+                                <th className="px-4 py-2 text-left">Status</th>
+                                <th className="px-4 py-2 text-left">Created By</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {loading ? (
+                                <tr>
+                                    <td colSpan={8} className="text-center py-8 text-gray-400 animate-pulse">
+                                        Loading...
+                                    </td>
+                                </tr>
+                            ) : transfers.length === 0 ? (
+                                <tr>
+                                    <td colSpan={8} className="text-center py-8 text-gray-400">
+                                        <MapPin className="mx-auto mb-2 h-8 w-8" />
+                                        No transfers found.
+                                    </td>
+                                </tr>
+                            ) : (
+                                transfers.map(tr => (
+                                    <tr key={tr.id} className="hover:bg-gray-50">
+                                        <td className="px-4 py-2">{tr.reference}</td>
+                                        <td className="px-4 py-2">{new Date(tr.date).toLocaleString()}</td>
+                                        <td className="px-4 py-2">{tr.from_location?.name}</td>
+                                        <td className="px-4 py-2">{tr.to_location?.name}</td>
+                                        <td className="px-4 py-2">
+                                            {Array.isArray(tr.items) ? tr.items.map(i => i.item.name).join(', ') : '-'}
+                                        </td>
+                                        <td className="px-4 py-2">
+                                            {Array.isArray(tr.items) ? tr.items.map(i => i.quantity).join(', ') : '-'}
+                                        </td>
+                                        <td className="px-4 py-2">
+                                            <span className={`px-2 py-1 rounded text-xs ${tr.status === 'completed' ? 'bg-green-100 text-green-800' : tr.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
+                                                {tr.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-2">{tr.created_by?.name}</td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            {/* --- Stock Transactions Section --- */}
+            <section>
+                <div className="bg-white rounded-lg shadow-sm overflow-x-auto">
+                    <h2 className="text-lg font-semibold p-4 border-b">Stock Transactions</h2>
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <caption className="sr-only">Stock Transactions Table</caption>
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th className="px-4 py-2 text-left">ID</th>
+                                <th className="px-4 py-2 text-left">Item</th>
+                                <th className="px-4 py-2 text-left">Type</th>
+                                <th className="px-4 py-2 text-left">Quantity</th>
+                                <th className="px-4 py-2 text-left">Reason</th>
+                                <th className="px-4 py-2 text-left">Location</th>
+                                <th className="px-4 py-2 text-left">User</th>
+                                <th className="px-4 py-2 text-left">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {transactions.length === 0 ? (
+                                <tr>
+                                    <td colSpan={8} className="text-center py-8 text-gray-400">
+                                        <Package className="mx-auto mb-2 h-8 w-8" />
+                                        No transactions found.
+                                    </td>
+                                </tr>
+                            ) : (
+                                transactions.map(tx => (
+                                    <tr key={tx.id} className="hover:bg-gray-50">
+                                        <td className="px-4 py-2">{tx.id}</td>
+                                        <td className="px-4 py-2">{tx.item?.name}</td>
+                                        <td className="px-4 py-2">
+                                            <span className={`px-2 py-1 rounded text-xs ${tx.type === 'in' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                                {tx.type.toUpperCase()}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-2">{tx.quantity}</td>
+                                        <td className="px-4 py-2">{tx.reason || '-'}</td>
+                                        <td className="px-4 py-2">{tx.location?.name}</td>
+                                        <td className="px-4 py-2">{tx.user?.name}</td>
+                                        <td className="px-4 py-2">{new Date(tx.created_at).toLocaleString()}</td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
 
             {/* Modal */}
             {showModal && (
@@ -229,100 +341,6 @@ export default function StockTransfers() {
                     </div>
                 </div>
             )}
-
-            {/* Transfer History Table */}
-            <div className="bg-white rounded-lg shadow-sm overflow-x-auto mt-6">
-                <h2 className="text-lg font-semibold p-4 border-b">Transfer History</h2>
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-4 py-2 text-left">Reference</th>
-                            <th className="px-4 py-2 text-left">Date</th>
-                            <th className="px-4 py-2 text-left">From</th>
-                            <th className="px-4 py-2 text-left">To</th>
-                            <th className="px-4 py-2 text-left">Item(s)</th>
-                            <th className="px-4 py-2 text-left">Qty</th>
-                            <th className="px-4 py-2 text-left">Status</th>
-                            <th className="px-4 py-2 text-left">Created By</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {transfers.length === 0 ? (
-                            <tr>
-                                <td colSpan={8} className="text-center py-6 text-gray-500">
-                                    No transfers found.
-                                </td>
-                            </tr>
-                        ) : (
-                            transfers.map(tr => (
-                                <tr key={tr.id} className="hover:bg-gray-50">
-                                    <td className="px-4 py-2">{tr.reference}</td>
-                                    <td className="px-4 py-2">{new Date(tr.date).toLocaleString()}</td>
-                                    <td className="px-4 py-2">{tr.from_location?.name}</td>
-                                    <td className="px-4 py-2">{tr.to_location?.name}</td>
-                                    <td className="px-4 py-2">
-                                        {tr.items.map(i => i.item.name).join(', ')}
-                                    </td>
-                                    <td className="px-4 py-2">
-                                        {tr.items.map(i => i.quantity).join(', ')}
-                                    </td>
-                                    <td className="px-4 py-2">
-                                        <span className={`px-2 py-1 rounded text-xs ${tr.status === 'completed' ? 'bg-green-100 text-green-800' : tr.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
-                                            {tr.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-2">{tr.created_by?.name}</td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
-
-            {/* Stock Transactions Table */}
-            <div className="bg-white rounded-lg shadow-sm overflow-x-auto mt-6">
-                <h2 className="text-lg font-semibold p-4 border-b">Stock Transactions</h2>
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-4 py-2 text-left">ID</th>
-                            <th className="px-4 py-2 text-left">Item</th>
-                            <th className="px-4 py-2 text-left">Type</th>
-                            <th className="px-4 py-2 text-left">Quantity</th>
-                            <th className="px-4 py-2 text-left">Reason</th>
-                            <th className="px-4 py-2 text-left">Location</th>
-                            <th className="px-4 py-2 text-left">User</th>
-                            <th className="px-4 py-2 text-left">Date</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {transactions.length === 0 ? (
-                            <tr>
-                                <td colSpan={8} className="text-center py-6 text-gray-500">
-                                    No transactions found.
-                                </td>
-                            </tr>
-                        ) : (
-                            transactions.map(tx => (
-                                <tr key={tx.id} className="hover:bg-gray-50">
-                                    <td className="px-4 py-2">{tx.id}</td>
-                                    <td className="px-4 py-2">{tx.item?.name}</td>
-                                    <td className="px-4 py-2">
-                                        <span className={`px-2 py-1 rounded text-xs ${tx.type === 'in' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                            {tx.type.toUpperCase()}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-2">{tx.quantity}</td>
-                                    <td className="px-4 py-2">{tx.reason || '-'}</td>
-                                    <td className="px-4 py-2">{tx.location?.name}</td>
-                                    <td className="px-4 py-2">{tx.user?.name}</td>
-                                    <td className="px-4 py-2">{new Date(tx.created_at).toLocaleString()}</td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
         </AppLayout>
     );
 }

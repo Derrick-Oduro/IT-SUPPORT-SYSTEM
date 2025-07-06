@@ -16,6 +16,11 @@ type UnitOfMeasure = {
     abbreviation: string;
 };
 
+type Location = {
+    id: number;
+    name: string;
+};
+
 type InventoryItem = {
     id: number;
     name: string;
@@ -23,11 +28,11 @@ type InventoryItem = {
     description: string | null;
     category_id: number | null;
     uom_id: number | null;
+    location_id: number | null;
     quantity: number;
     reorder_level: number;
     unit_price: number | null;
     is_active: boolean;
-    location: string | null;
     image_path: string | null;
 };
 
@@ -38,19 +43,20 @@ type EditItemModalProps = {
     item: InventoryItem | null;
     categories: Category[];
     units: UnitOfMeasure[];
+    locations: Location[];
 };
 
-export default function EditItemModal({ show, onClose, onSuccess, item, categories, units }: EditItemModalProps) {
+export default function EditItemModal({ show, onClose, onSuccess, item, categories, units, locations }: EditItemModalProps) {
     const [formData, setFormData] = useState({
         name: '',
         sku: '',
         description: '',
         category_id: '',
         uom_id: '',
+        location_id: '',
         reorder_level: '0',
         unit_price: '',
         is_active: true,
-        location: '',
     });
     const [selectedImage, setSelectedImage] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -68,10 +74,10 @@ export default function EditItemModal({ show, onClose, onSuccess, item, categori
                 description: item.description || '',
                 category_id: item.category_id ? String(item.category_id) : '',
                 uom_id: item.uom_id ? String(item.uom_id) : '',
+                location_id: item.location_id ? String(item.location_id) : '',
                 reorder_level: String(item.reorder_level) || '0',
                 unit_price: item.unit_price ? String(item.unit_price) : '',
                 is_active: item.is_active,
-                location: item.location || '',
             });
 
             // Set image preview if item has an image
@@ -267,6 +273,24 @@ export default function EditItemModal({ show, onClose, onSuccess, item, categori
                     </div>
 
                     <div className="grid gap-2">
+                        <Label htmlFor="location_id">Storage Location (optional)</Label>
+                        <select
+                            id="location_id"
+                            name="location_id"
+                            value={formData.location_id}
+                            onChange={handleChange}
+                            disabled={isSubmitting}
+                            className="w-full p-2 border rounded-md"
+                        >
+                            <option value="">Select a location</option>
+                            {(locations || []).map(loc => (
+                                <option key={loc.id} value={loc.id}>{loc.name}</option>
+                            ))}
+                        </select>
+                        {errors.location_id && <p className="text-red-500 text-xs mt-1">{errors.location_id}</p>}
+                    </div>
+
+                    <div className="grid gap-2">
                         <Label htmlFor="reorder_level">Reorder Level</Label>
                         <Input
                             id="reorder_level"
@@ -298,21 +322,6 @@ export default function EditItemModal({ show, onClose, onSuccess, item, categori
                             className="w-full"
                         />
                         {errors.unit_price && <p className="text-red-500 text-xs mt-1">{errors.unit_price}</p>}
-                    </div>
-
-                    <div className="grid gap-2">
-                        <Label htmlFor="location">Storage Location (optional)</Label>
-                        <Input
-                            id="location"
-                            name="location"
-                            type="text"
-                            value={formData.location}
-                            onChange={handleChange}
-                            disabled={isSubmitting}
-                            placeholder="Warehouse, shelf, etc."
-                            className="w-full"
-                        />
-                        {errors.location && <p className="text-red-500 text-xs mt-1">{errors.location}</p>}
                     </div>
 
                     <div className="grid gap-2">

@@ -22,7 +22,7 @@ return new class extends Migration {
             $table->decimal('reorder_level', 10, 2)->default(0);
             $table->decimal('unit_price', 10, 2)->nullable();
             $table->boolean('is_active')->default(true);
-            $table->string('location')->nullable();
+            $table->foreignId('location_id')->nullable()->constrained('locations')->nullOnDelete();
             $table->string('image_path')->nullable();
             $table->foreignId('created_by')->constrained('users');
             $table->foreignId('updated_by')->constrained('users');
