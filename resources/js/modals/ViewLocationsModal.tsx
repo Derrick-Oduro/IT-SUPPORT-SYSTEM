@@ -65,7 +65,7 @@ export default function ViewLocationsModal({ show, onClose }: ViewLocationsModal
 
   const filteredLocations = locations.filter(location => {
     if (!searchQuery) return true;
-    
+
     const query = searchQuery.toLowerCase();
     return (
       location.name.toLowerCase().includes(query) ||
@@ -77,21 +77,24 @@ export default function ViewLocationsModal({ show, onClose }: ViewLocationsModal
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-3xl max-h-[80vh] flex flex-col">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold flex items-center">
-            <MapPin className="h-5 w-5 mr-2 text-blue-600" />
-            Manage Locations
-          </h2>
+    <div
+      className="fixed inset-0 flex items-center justify-center bg-black/30 backdrop-blur-sm z-50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto m-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Locations</h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
+            className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-xl transition-all duration-200"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
-        
+
         <div className="flex justify-between mb-4">
           <div className="relative flex-grow mr-4">
             <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -105,7 +108,7 @@ export default function ViewLocationsModal({ show, onClose }: ViewLocationsModal
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          
+
           <div className="flex gap-2">
             <button
               onClick={fetchLocations}
@@ -114,7 +117,7 @@ export default function ViewLocationsModal({ show, onClose }: ViewLocationsModal
             >
               <RefreshCw className="h-4 w-4" />
             </button>
-            
+
             <button
               onClick={() => setShowCreateModal(true)}
               className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
@@ -124,7 +127,7 @@ export default function ViewLocationsModal({ show, onClose }: ViewLocationsModal
             </button>
           </div>
         </div>
-        
+
         <div className="overflow-y-auto flex-grow">
           {isLoading ? (
             <div className="flex justify-center items-center h-48">
@@ -161,8 +164,8 @@ export default function ViewLocationsModal({ show, onClose }: ViewLocationsModal
                         )}
                         <div className="mt-2">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            location.is_active 
-                              ? 'bg-green-100 text-green-800' 
+                            location.is_active
+                              ? 'bg-green-100 text-green-800'
                               : 'bg-red-100 text-red-800'
                           }`}>
                             {location.is_active ? 'Active' : 'Inactive'}
@@ -192,7 +195,7 @@ export default function ViewLocationsModal({ show, onClose }: ViewLocationsModal
             </div>
           )}
         </div>
-        
+
         <CreateLocationModal
           show={showCreateModal}
           onClose={() => setShowCreateModal(false)}

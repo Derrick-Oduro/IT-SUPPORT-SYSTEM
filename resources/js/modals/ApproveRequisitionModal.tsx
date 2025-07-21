@@ -18,33 +18,33 @@ export default function ApproveRequisitionModal({ show, onClose, onSuccess, requ
   const [notes, setNotes] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   if (!show || !requisition) return null;
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
-      year: 'numeric', 
-      month: 'short', 
+      year: 'numeric',
+      month: 'short',
       day: 'numeric'
     });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!decision) {
       setErrors({ decision: 'Please select whether to approve or decline this requisition' });
       return;
     }
-    
+
     setIsSubmitting(true);
-    
+
     const reviewData = {
       status: decision,
       notes: notes
     };
-    
+
     axios.put(`/api/requisitions/${requisition.id}`, reviewData)
       .then(response => {
         onSuccess();
@@ -52,7 +52,7 @@ export default function ApproveRequisitionModal({ show, onClose, onSuccess, requ
       })
       .catch(error => {
         console.error('Error reviewing requisition:', error);
-        
+
         if (error.response?.data?.errors) {
           setErrors(error.response.data.errors);
         } else {
@@ -68,13 +68,19 @@ export default function ApproveRequisitionModal({ show, onClose, onSuccess, requ
   const isItemAvailable = requisition.item && requisition.quantity <= requisition.item.quantity;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div
+      className="fixed inset-0 flex items-center justify-center bg-black/30 backdrop-blur-sm z-50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold">Review Requisition</h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
+            className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-xl transition-all duration-200"
           >
             <X className="h-5 w-5" />
           </button>
@@ -94,8 +100,8 @@ export default function ApproveRequisitionModal({ show, onClose, onSuccess, requ
               </div>
             </div>
             <div>
-              <Badge className={requisition.status === 'pending' ? 'bg-blue-100 text-blue-800' : 
-                             requisition.status === 'approved' ? 'bg-green-100 text-green-800' : 
+              <Badge className={requisition.status === 'pending' ? 'bg-blue-100 text-blue-800' :
+                             requisition.status === 'approved' ? 'bg-green-100 text-green-800' :
                              'bg-red-100 text-red-800'}>
                 {requisition.status.charAt(0).toUpperCase() + requisition.status.slice(1)}
               </Badge>
@@ -135,7 +141,7 @@ export default function ApproveRequisitionModal({ show, onClose, onSuccess, requ
                   {requisition.item?.quantity || 0} {requisition.item?.unit_of_measure?.abbreviation || 'units'}
                 </span>
               </div>
-              
+
               {!isItemAvailable && (
                 <div className="mt-3 bg-red-50 p-2 rounded flex items-start">
                   <Info className="h-5 w-5 text-red-500 mr-2 flex-shrink-0 mt-0.5" />
@@ -148,7 +154,7 @@ export default function ApproveRequisitionModal({ show, onClose, onSuccess, requ
           </div>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="mb-6">
             <Label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
               Notes (optional)
@@ -183,7 +189,7 @@ export default function ApproveRequisitionModal({ show, onClose, onSuccess, requ
                 <span className="font-medium">Approve</span>
                 <span className="text-xs text-gray-500 mt-1">Approve this requisition</span>
               </button>
-              
+
               <button
                 type="button"
                 className={`flex flex-col items-center justify-center p-4 rounded-md border-2 ${
@@ -220,8 +226,8 @@ export default function ApproveRequisitionModal({ show, onClose, onSuccess, requ
             <Button
               type="submit"
               className={`${
-                decision === 'approved' 
-                  ? 'bg-green-600 hover:bg-green-700' 
+                decision === 'approved'
+                  ? 'bg-green-600 hover:bg-green-700'
                   : decision === 'declined'
                     ? 'bg-red-600 hover:bg-red-700'
                     : 'bg-blue-600 hover:bg-blue-700'
@@ -229,8 +235,8 @@ export default function ApproveRequisitionModal({ show, onClose, onSuccess, requ
               disabled={isSubmitting || !decision}
             >
               {isSubmitting && <LoaderCircle className="h-4 w-4 mr-2 animate-spin" />}
-              {decision === 'approved' 
-                ? 'Approve Requisition' 
+              {decision === 'approved'
+                ? 'Approve Requisition'
                 : decision === 'declined'
                   ? 'Decline Requisition'
                   : 'Submit Decision'}

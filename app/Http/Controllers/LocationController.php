@@ -10,18 +10,28 @@ use Illuminate\Support\Facades\Validator;
 class LocationController extends Controller
 {
     /**
-     * Display a listing of all locations.
-     * Used for dropdowns in requisition forms.
+     * Display a listing of all locations for management.
+     * Shows both active and inactive locations.
      *
      * @return \Illuminate\Http\Response
      */
     public function index()
     {
-        // Get all active locations ordered by name
+        // For management view, show all locations (active and inactive)
+        $locations = Location::orderBy('name')->get();
+        return response()->json($locations);
+    }
+
+    /**
+     * Get only active locations for dropdowns.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function getActiveLocations()
+    {
         $locations = Location::where('is_active', true)
             ->orderBy('name')
             ->get();
-
         return response()->json($locations);
     }
 

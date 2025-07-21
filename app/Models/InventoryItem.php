@@ -15,11 +15,11 @@ class InventoryItem extends Model
         'description',
         'category_id',
         'uom_id',
+        'location_id',
         'quantity',
         'reorder_level',
         'unit_price',
         'is_active',
-        'location_id',
         'image_path',
         'created_by',
         'updated_by'

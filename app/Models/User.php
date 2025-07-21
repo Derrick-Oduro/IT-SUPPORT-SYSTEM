@@ -14,6 +14,9 @@ class User extends Authenticatable
     protected $fillable = ['name', 'email', 'password', 'role_id', 'location_id'];
     protected $with = ['role'];
 
+    /**
+     * Get the role that belongs to the user.
+     */
     public function role()
     {
         return $this->belongsTo(Role::class);

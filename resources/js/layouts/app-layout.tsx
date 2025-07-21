@@ -1,5 +1,5 @@
 import Sidebar from '@/components/ui/sidebar';
-import { Bell, User, LogOut, Search, Package, MapPin, ClipboardList, Users, Settings, LayoutGrid } from 'lucide-react';
+import { Bell, User, LogOut, Package, MapPin, ClipboardList, Users, Settings, LayoutGrid } from 'lucide-react';
 import { useState, useRef, useEffect, type ReactNode } from 'react';
 import { router, usePage, Link } from '@inertiajs/react';
 import axios from 'axios';
@@ -28,178 +28,87 @@ const navLinks = [
 ];
 
 export default function AppLayout({ children }: AppLayoutProps) {
-    const { auth } = usePage().props as { auth?: Auth };
-    if (!auth) {
-        throw new Error("Auth prop is missing from page props.");
-    }
+    const { auth } = usePage<{ auth: Auth }>().props;
     const user = auth.user;
-    const isAdmin = user.role?.name === 'Admin';
+    const userRole = user.role?.name;
 
-    const [profileOpen, setProfileOpen] = useState(false);
-    const profileRef = useRef<HTMLDivElement>(null);
+    const [notificationsOpen, setNotificationsOpen] = useState(false);
+    const [notifications, setNotifications] = useState([]);
 
-    const [notifications, setNotifications] = useState<any[]>([]);
-    const [notifOpen, setNotifOpen] = useState(false);
-    const notifRef = useRef<HTMLDivElement>(null);
+    const notificationsRef = useRef<HTMLDivElement>(null);
 
+    // Filter navigation links based on user role
+    const filteredNavLinks = navLinks.filter(link => {
+        if (link.adminOnly && userRole !== 'Admin') {
+            return false;
+        }
+        return true;
+    });
+
+    // Close dropdowns when clicking outside
     useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
-                setProfileOpen(false);
+        const handleClickOutside = (event: MouseEvent) => {
+            if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
+                setNotificationsOpen(false);
             }
-            if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
-                setNotifOpen(false);
-            }
-        }
-        if (profileOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
-        } else {
-            document.removeEventListener('mousedown', handleClickOutside);
-        }
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, [profileOpen, notifOpen]);
 
-    const fetchNotifications = () => {
-        axios.get('/api/notifications').then(res => setNotifications(res.data));
-    };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     return (
-        <div className="min-h-screen bg-gray-50 flex">
+        <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100">
             {/* Sidebar */}
-            <aside className="fixed top-0 left-0 w-64 h-screen bg-gradient-to-b from-[#071A22] to-[#17405e] text-white flex flex-col py-8 px-4 z-30 shadow-lg">
-                <div className="mb-8 flex items-center gap-3 px-2">
-                    <span className="text-2xl font-bold tracking-wide">IT Support</span>
-                </div>
-                <nav className="flex-1">
-                    <ul className="space-y-1">
-                        {navLinks
-                            .filter(link => !link.adminOnly || isAdmin)
-                            .map(link => (
-                                <li key={link.href}>
-                                    <Link
-                                        href={link.href}
-                                        className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-white/10 transition text-base font-medium"
-                                        activeClassName="bg-white/20 text-blue-200"
-                                    >
-                                        <link.icon className="w-5 h-5" />
-                                        {link.label}
-                                    </Link>
-                                </li>
-                            ))}
-                    </ul>
-                </nav>
-                <div className="mt-auto flex items-center gap-3 px-2 pt-8 border-t border-white/10">
-                    <User className="w-7 h-7 text-white/80" />
-                    <div>
-                        <div className="font-semibold">{user.name}</div>
-                        <div className="text-xs text-blue-100">{user.email}</div>
-                    </div>
-                </div>
-            </aside>
+            <Sidebar
+                className="fixed top-0 left-0 z-40 w-64 h-screen"
+                navLinks={filteredNavLinks}
+                user={user}
+            />
+
             {/* Main Content Area */}
             <div className="ml-64 flex flex-col min-h-screen w-full">
                 {/* Topbar */}
-                <header className="sticky top-0 z-20 flex items-center justify-end px-8 py-4 bg-white border-b border-gray-200 shadow-sm">
-                    {/* Right side only */}
+                <header className="sticky top-0 z-20 flex items-center justify-end px-6 py-4 bg-white/80 backdrop-blur-sm border-b border-gray-200/50 shadow-sm">
+                    {/* Right side - only notifications now */}
                     <div className="flex items-center space-x-4">
-                        {/* Notification Icon with Dropdown */}
-                        <div className="relative" ref={notifRef}>
+                        {/* Notifications */}
+                        <div className="relative" ref={notificationsRef}>
                             <button
-                                onClick={() => {
-                                    setNotifOpen((open) => !open);
-                                    if (!notifOpen) fetchNotifications();
-                                }}
-                                className="relative focus:outline-none hover:bg-gray-100 rounded-full p-2"
+                                onClick={() => setNotificationsOpen((open) => !open)}
+                                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-all duration-200 relative"
                             >
-                                <Bell className="w-6 h-6 text-[#071A22]" />
-                                {notifications.some(n => !n.read_at) && (
-                                    <span className="absolute top-1 right-1 block h-2 w-2 rounded-full bg-red-500"></span>
+                                <Bell className="w-5 h-5" />
+                                {notifications.length > 0 && (
+                                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center animate-pulse">
+                                        {notifications.length}
+                                    </span>
                                 )}
                             </button>
-                            {notifOpen && (
-                                <div className="absolute right-0 mt-2 w-80 bg-white text-[#071A22] rounded shadow-lg z-50 p-4">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <span className="font-semibold">Notifications</span>
-                                        <button
-                                            className="text-xs text-blue-600 hover:underline"
-                                            onClick={() => {
-                                                axios.post('/api/notifications/read').then(() => {
-                                                    setNotifications(notifications.map(n => ({ ...n, read_at: new Date().toISOString() })));
-                                                });
-                                            }}
-                                        >
-                                            Mark all as read
-                                        </button>
-                                    </div>
-                                    <ul className="max-h-64 overflow-y-auto">
-                                        {notifications.length === 0 ? (
-                                            <li className="text-gray-500 text-sm py-4 text-center">No notifications</li>
-                                        ) : (
-                                            notifications.map(n => (
-                                                <li
-                                                    key={n.id}
-                                                    className={`py-2 px-2 rounded ${n.read_at ? 'bg-gray-50' : 'bg-blue-50 font-semibold'}`}
-                                                >
-                                                    <div>{n.data?.message || n.type}</div>
-                                                    <div className="text-xs text-gray-400">{new Date(n.created_at).toLocaleString()}</div>
+                            {notificationsOpen && (
+                                <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 p-4">
+                                    <h3 className="font-semibold text-gray-900 mb-3">Notifications</h3>
+                                    {notifications.length === 0 ? (
+                                        <p className="text-gray-500 text-sm text-center py-4">No new notifications</p>
+                                    ) : (
+                                        <ul className="space-y-2">
+                                            {notifications.map((notification: any, index) => (
+                                                <li key={index} className="p-3 hover:bg-gray-50 rounded-lg border-b border-gray-100 last:border-b-0">
+                                                    {notification.message}
                                                 </li>
-                                            ))
-                                        )}
-                                    </ul>
-                                </div>
-                            )}
-                        </div>
-                        {/* Profile Avatar */}
-                        <div className="relative" ref={profileRef}>
-                            <button
-                                onClick={() => setProfileOpen((open) => !open)}
-                                className="focus:outline-none"
-                            >
-                                {user.avatar ? (
-                                    <img
-                                        src={user.avatar}
-                                        alt="Profile"
-                                        className="w-9 h-9 rounded-full border-2 border-[#071A22] object-cover"
-                                    />
-                                ) : (
-                                    <div className="w-9 h-9 rounded-full bg-[#071A22] text-white flex items-center justify-center font-bold border-2 border-[#071A22]">
-                                        {user.name
-                                            .split(' ')
-                                            .map((n) => n[0])
-                                            .join('')
-                                            .toUpperCase()
-                                            .slice(0, 2)}
-                                    </div>
-                                )}
-                            </button>
-                            {/* Profile Popup */}
-                            {profileOpen && (
-                                <div className="absolute right-0 mt-2 w-56 bg-white text-[#071A22] rounded shadow-lg z-50 p-4">
-                                    <div className="flex items-center space-x-3 mb-3">
-                                        <div className="w-10 h-10 rounded-full bg-[#071A22] text-white flex items-center justify-center font-bold">
-                                            <User className="w-6 h-6" />
-                                        </div>
-                                        <div>
-                                            <div className="font-semibold">{user.name}</div>
-                                            <div className="text-xs text-gray-500">{user.email}</div>
-                                        </div>
-                                    </div>
-                                    <hr className="my-2" />
-                                    <button
-                                        onClick={() => router.post('/logout')}
-                                        className="w-full text-left px-3 py-2 rounded bg-[#071A22] text-white hover:bg-[#05303e] transition flex items-center gap-2"
-                                    >
-                                        <LogOut className="w-4 h-4" />
-                                        Log out
-                                    </button>
+                                            ))}
+                                        </ul>
+                                    )}
                                 </div>
                             )}
                         </div>
                     </div>
                 </header>
-                <main className="flex-1 p-8 bg-gray-50">{children}</main>
+
+                {/* Page Content */}
+                <main className="flex-1 p-6">
+                    {children}
+                </main>
             </div>
         </div>
     );

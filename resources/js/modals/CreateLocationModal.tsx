@@ -44,12 +44,12 @@ export default function CreateLocationModal({ show, onClose, onSuccess }: Create
 
         setIsSubmitting(true);
 
-        // Use the correct API endpoint with /api prefix
         axios.post('/api/locations', formData)
             .then(response => {
                 console.log('Location created:', response.data);
                 onSuccess();
                 setFormData({ name: '', description: '', address: '' });
+                onClose();
             })
             .catch(error => {
                 console.error('Error creating location:', error);
@@ -66,24 +66,30 @@ export default function CreateLocationModal({ show, onClose, onSuccess }: Create
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold flex items-center">
-                        <MapPin className="h-5 w-5 mr-2 text-blue-600" />
-                        Add New Location
-                    </h2>
+        <div
+            className="fixed inset-0 flex items-center justify-center bg-black/30 backdrop-blur-sm z-50"
+            onClick={onClose}
+        >
+            <div
+                className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md m-4"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl p-3 shadow-lg">
+                        <MapPin className="h-5 w-5" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-gray-900">Add New Location</h2>
                     <button
                         onClick={onClose}
-                        className="text-gray-500 hover:text-gray-700"
+                        className="ml-auto text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-xl transition-all duration-200"
                     >
                         <X className="h-5 w-5" />
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
-                        <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                        <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-2">
                             Location Name *
                         </label>
                         <input
@@ -93,15 +99,15 @@ export default function CreateLocationModal({ show, onClose, onSuccess }: Create
                             required
                             value={formData.name}
                             onChange={handleChange}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                            className="w-full py-3 px-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                             disabled={isSubmitting}
                             placeholder="Enter location name"
                         />
-                        {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+                        {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
                     </div>
 
                     <div>
-                        <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                        <label htmlFor="description" className="block text-sm font-semibold text-gray-700 mb-2">
                             Description (Optional)
                         </label>
                         <textarea
@@ -110,14 +116,14 @@ export default function CreateLocationModal({ show, onClose, onSuccess }: Create
                             value={formData.description}
                             onChange={handleChange}
                             rows={3}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                            className="w-full py-3 px-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                             disabled={isSubmitting}
                             placeholder="Brief description of this location"
                         />
                     </div>
 
                     <div>
-                        <label htmlFor="address" className="block text-sm font-medium text-gray-700">
+                        <label htmlFor="address" className="block text-sm font-semibold text-gray-700 mb-2">
                             Address (Optional)
                         </label>
                         <textarea
@@ -126,38 +132,35 @@ export default function CreateLocationModal({ show, onClose, onSuccess }: Create
                             value={formData.address}
                             onChange={handleChange}
                             rows={2}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                            className="w-full py-3 px-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                             disabled={isSubmitting}
                             placeholder="Full address of this location"
                         />
                     </div>
 
                     {errors.general && (
-                        <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm">
+                        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-sm">
                             {errors.general}
                         </div>
                     )}
 
-                    <div className="flex justify-end gap-2 mt-6">
+                    <div className="flex justify-end gap-4 pt-4">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-md"
+                            className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-all duration-200"
                             disabled={isSubmitting}
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
-                            className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md"
+                            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50"
                             disabled={isSubmitting}
                         >
                             {isSubmitting ? (
-                                <span className="flex items-center">
-                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
+                                <span className="flex items-center gap-2">
+                                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
                                     Processing...
                                 </span>
                             ) : 'Add Location'}

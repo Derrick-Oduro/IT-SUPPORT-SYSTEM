@@ -16,25 +16,31 @@ type UnitOfMeasure = {
   abbreviation: string;
 };
 
+type Location = {
+  id: number;
+  name: string;
+};
+
 type AddItemModalProps = {
   show: boolean;
   onClose: () => void;
   onSuccess: () => void;
   categories: Category[];
   units: UnitOfMeasure[];
+  locations: Location[];
 };
 
-export default function AddItemModal({ show, onClose, onSuccess, categories, units }: AddItemModalProps) {
+export default function AddItemModal({ show, onClose, onSuccess, categories, units, locations }: AddItemModalProps) {
   const [formData, setFormData] = useState({
     name: '',
     sku: '',
     description: '',
     category_id: '',
     uom_id: '',
+    location_id: '',
     quantity: '0',
     reorder_level: '0',
     unit_price: '',
-    location: '',
   });
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -52,7 +58,7 @@ export default function AddItemModal({ show, onClose, onSuccess, categories, uni
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setSelectedImage(file);
-      
+
       // Create a preview URL
       const reader = new FileReader();
       reader.onload = (event) => {
@@ -68,13 +74,13 @@ export default function AddItemModal({ show, onClose, onSuccess, categories, uni
     setErrors({});
 
     const formDataToSend = new FormData();
-    
+
     Object.entries(formData).forEach(([key, value]) => {
       if (value !== '') {
         formDataToSend.append(key, value);
       }
     });
-    
+
     if (selectedImage) {
       formDataToSend.append('image', selectedImage);
     }
@@ -107,23 +113,29 @@ export default function AddItemModal({ show, onClose, onSuccess, categories, uni
       description: '',
       category_id: '',
       uom_id: '',
+      location_id: '',
       quantity: '0',
       reorder_level: '0',
       unit_price: '',
-      location: '',
     });
     setSelectedImage(null);
     setImagePreview(null);
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+    <div
+      className="fixed inset-0 flex items-center justify-center bg-black/30 backdrop-blur-sm z-50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto m-4"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">Add New Inventory Item</h2>
+          <h2 className="text-xl font-bold">Add Item</h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
+            className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-xl transition-all duration-200"
           >
             <X className="h-5 w-5" />
           </button>
@@ -268,18 +280,21 @@ export default function AddItemModal({ show, onClose, onSuccess, categories, uni
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="location">Storage Location (optional)</Label>
-            <Input
-              id="location"
-              name="location"
-              type="text"
-              value={formData.location}
+            <Label htmlFor="location_id">Storage Location</Label>
+            <select
+              id="location_id"
+              name="location_id"
+              value={formData.location_id}
               onChange={handleChange}
               disabled={isSubmitting}
-              placeholder="Warehouse, shelf, etc."
-              className="w-full"
-            />
-            {errors.location && <p className="text-red-500 text-xs mt-1">{errors.location}</p>}
+              className="w-full p-2 border rounded-md"
+            >
+              <option value="">Select a location</option>
+              {(locations || []).map(location => (
+                <option key={location.id} value={location.id}>{location.name}</option>
+              ))}
+            </select>
+            {errors.location_id && <p className="text-red-500 text-xs mt-1">{errors.location_id}</p>}
           </div>
 
           <div className="grid gap-2">
@@ -294,12 +309,12 @@ export default function AddItemModal({ show, onClose, onSuccess, categories, uni
               className="w-full"
             />
             {errors.image && <p className="text-red-500 text-xs mt-1">{errors.image}</p>}
-            
+
             {imagePreview && (
               <div className="mt-2">
-                <img 
-                  src={imagePreview} 
-                  alt="Preview" 
+                <img
+                  src={imagePreview}
+                  alt="Preview"
                   className="h-32 w-32 object-cover rounded border p-1"
                 />
               </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { LoaderCircle, X, Plus, Trash2, Package, Search } from 'lucide-react';
+import { LoaderCircle, X, Plus, Trash2, Package, Search, FileText, MapPin, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,6 +21,7 @@ type RequisitionItemForm = {
     item_id: number;
     item: InventoryItem;
     quantity: number;
+    notes?: string;
 };
 
 type CreateRequisitionModalProps = {
@@ -34,6 +35,7 @@ export default function CreateRequisitionModal({ show, onClose, onSuccess }: Cre
         item_id: '',
         quantity: 1,
         location_id: '',
+        notes: ''
     });
 
     const [items, setItems] = useState<RequisitionItemForm[]>([]);
@@ -54,6 +56,7 @@ export default function CreateRequisitionModal({ show, onClose, onSuccess }: Cre
                 item_id: '',
                 quantity: 1,
                 location_id: '',
+                notes: ''
             });
             setItems([]);
             setErrors({});
@@ -66,7 +69,6 @@ export default function CreateRequisitionModal({ show, onClose, onSuccess }: Cre
         filterItems();
     }, [searchQuery, availableItems]);
 
-    // Modify the fetchInventoryItems function
     const fetchInventoryItems = () => {
         setIsLoadingItems(true);
 
@@ -95,11 +97,11 @@ export default function CreateRequisitionModal({ show, onClose, onSuccess }: Cre
                     console.log(`- is_active:`, item.is_active);
                     console.log(`- quantity type:`, typeof item.quantity);
                     console.log(`- quantity value:`, item.quantity);
-                    console.log(`- Would pass filter:`, 
-                        item && 
-                        typeof item === 'object' && 
-                        item.is_active !== false && 
-                        typeof item.quantity === 'number' && 
+                    console.log(`- Would pass filter:`,
+                        item &&
+                        typeof item === 'object' &&
+                        item.is_active !== false &&
+                        typeof item.quantity === 'number' &&
                         item.quantity > 0
                     );
                 });
@@ -110,24 +112,24 @@ export default function CreateRequisitionModal({ show, onClose, onSuccess }: Cre
                     if (!item || typeof item !== 'object') {
                         return false;
                     }
-                    
+
                     // Check active status - consider it active unless explicitly set to false
                     const isActive = item.is_active !== false;
-                    
+
                     // Check quantity - try to convert to number if it's a string
                     let itemQuantity = item.quantity;
                     if (typeof itemQuantity === 'string') {
                         itemQuantity = parseFloat(itemQuantity);
                     }
-                    
+
                     const hasStock = typeof itemQuantity === 'number' && !isNaN(itemQuantity) && itemQuantity > 0;
-                    
+
                     return isActive && hasStock;
                 });
 
                 console.log('Active items with stock:', activeItems);
                 setAvailableItems(activeItems);
-                
+
                 // If we still have no items, add a test item for debugging
                 if (activeItems.length === 0 && items.length > 0) {
                     console.log('Adding the first inventory item regardless of filters for testing');
@@ -199,19 +201,29 @@ export default function CreateRequisitionModal({ show, onClose, onSuccess }: Cre
     const handleTextChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+        if (errors[name]) {
+            setErrors(prev => ({ ...prev, [name]: '' }));
+        }
     };
 
     const handleAddItem = (item: InventoryItem) => {
+        if (items.some(i => i.item_id === item.id)) {
+            setErrors({ general: 'Item is already added to the requisition' });
+            return;
+        }
+
         setItems(prev => [
             ...prev,
             {
                 item_id: item.id,
                 item: item,
-                quantity: 1
+                quantity: 1,
+                notes: ''
             }
         ]);
         setSearchQuery('');
         setShowItemSearch(false);
+        setErrors(prev => ({ ...prev, general: '' }));
     };
 
     const handleRemoveItem = (itemId: number) => {
@@ -229,36 +241,38 @@ export default function CreateRequisitionModal({ show, onClose, onSuccess }: Cre
         });
     };
 
+    const handleItemNotesChange = (index: number, notes: string) => {
+        setItems(prev => {
+            const updated = [...prev];
+            updated[index] = { ...updated[index], notes };
+            return updated;
+        });
+    };
+
     // Update your validateForm function
     const validateForm = () => {
         const newErrors: Record<string, string> = {};
 
-        if (!formData.item_id) {
-            newErrors.item_id = 'Please select an item';
-        }
-
-        if (!formData.quantity || formData.quantity < 1) {
-            newErrors.quantity = 'Quantity must be at least 1';
+        if (items.length === 0) {
+            newErrors.items = 'Please add at least one item to the requisition';
         }
 
         if (!formData.location_id) {
             newErrors.location_id = 'Please select a location';
         }
 
-        // Check if quantity exceeds available stock
-        if (formData.item_id && formData.quantity) {
-            const selectedItem = availableItems.find(item => item.id.toString() === formData.item_id.toString());
-            if (selectedItem && formData.quantity > selectedItem.quantity) {
-                newErrors.quantity = `Requested quantity exceeds available stock (${selectedItem.quantity})`;
+        items.forEach((item, index) => {
+            if (item.quantity > item.item.quantity) {
+                newErrors[`item_${index}`] = `Exceeds available stock (${item.item.quantity})`;
             }
-        }
+        });
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
     // Update your handleSubmit function
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (!validateForm()) {
@@ -267,154 +281,148 @@ export default function CreateRequisitionModal({ show, onClose, onSuccess }: Cre
 
         setIsSubmitting(true);
 
-        const requestData = {
-            item_id: parseInt(formData.item_id as string),
-            quantity: parseInt(formData.quantity.toString()),
-            location_id: parseInt(formData.location_id as string)
-        };
+        try {
+            // Create separate requisitions for each item (based on your database schema)
+            const requisitionPromises = items.map(item => {
+                const requestData = {
+                    item_id: item.item_id,
+                    quantity: item.quantity,
+                    location_id: parseInt(formData.location_id as string),
+                    admin_notes: item.notes || formData.notes || null
+                };
 
-        console.log('Submitting requisition:', requestData);
-
-        axios.post('/api/requisitions', requestData)
-            .then(response => {
-                console.log('Requisition created:', response.data);
-                onSuccess();
-                onClose();
-            })
-            .catch(error => {
-                console.error('Error creating requisition:', error);
-
-                if (error.response?.data?.errors) {
-                    setErrors(error.response.data.errors);
-                } else {
-                    setErrors({ general: 'Failed to create requisition. Please try again.' });
-                }
-            })
-            .finally(() => {
-                setIsSubmitting(false);
+                return axios.post('/api/requisitions', requestData);
             });
+
+            await Promise.all(requisitionPromises);
+
+            onSuccess();
+            onClose();
+        } catch (error) {
+            console.error('Error creating requisitions:', error);
+
+            if (error.response?.data?.errors) {
+                setErrors(error.response.data.errors);
+            } else {
+                setErrors({ general: 'Failed to create requisition. Please try again.' });
+            }
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     if (!show) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold">Create New Requisition</h2>
+        <div
+            className="fixed inset-0 flex items-center justify-center bg-black/30 backdrop-blur-sm z-50"
+            onClick={onClose}
+        >
+            <div
+                className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto m-4"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-xl p-3 shadow-lg">
+                        <FileText className="h-5 w-5" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-gray-900">Create New Requisition</h2>
                     <button
                         onClick={onClose}
-                        className="text-gray-500 hover:text-gray-700"
+                        className="ml-auto text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-xl transition-all duration-200"
                     >
                         <X className="h-5 w-5" />
                     </button>
                 </div>
 
+                {errors.general && (
+                    <div className="mb-6 bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl">
+                        {errors.general}
+                    </div>
+                )}
+
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    <div>
-                        <Label htmlFor="item_id" className="block text-sm font-medium text-gray-700">
-                            Select Item *
-                        </Label>
-                        <select
-                            id="item_id"
-                            name="item_id"
-                            value={formData.item_id}
-                            onChange={handleTextChange}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                            disabled={isSubmitting || isLoadingItems}
-                        >
-                            <option value="">Select an item</option>
-                            {availableItems.map(item => (
-                                <option key={item.id} value={item.id}>
-                                    {item.name} - {item.sku} ({item.quantity} {item.unit_of_measure?.abbreviation || 'units'} available)
-                                </option>
-                            ))}
-                        </select>
-                        {isLoadingItems && (
-                            <div className="mt-1 flex items-center">
-                                <LoaderCircle className="h-4 w-4 animate-spin text-blue-500 mr-2" />
-                                <span className="text-sm text-gray-500">Loading items...</span>
+                    {/* Basic Information */}
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Requisition Details</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <Label htmlFor="location_id" className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Delivery Location *
+                                </Label>
+                                <div className="relative">
+                                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                    <select
+                                        id="location_id"
+                                        name="location_id"
+                                        value={formData.location_id}
+                                        onChange={handleTextChange}
+                                        disabled={isSubmitting || isLoadingLocations}
+                                        className="w-full py-3 pl-10 pr-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                                    >
+                                        <option value="">Select delivery location</option>
+                                        {locations.map(location => (
+                                            <option key={location.id} value={location.id}>
+                                                {location.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                {isLoadingLocations && (
+                                    <div className="mt-1 flex items-center">
+                                        <LoaderCircle className="h-4 w-4 animate-spin text-green-500 mr-2" />
+                                        <span className="text-sm text-gray-500">Loading locations...</span>
+                                    </div>
+                                )}
+                                {errors.location_id && <p className="text-red-500 text-sm mt-1">{errors.location_id}</p>}
                             </div>
-                        )}
-                        {errors.item_id && <p className="text-red-500 text-xs mt-1">{errors.item_id}</p>}
-                    </div>
 
-                    <div>
-                        <Label htmlFor="quantity" className="block text-sm font-medium text-gray-700">
-                            Quantity *
-                        </Label>
-                        <input
-                            type="number"
-                            id="quantity"
-                            name="quantity"
-                            value={formData.quantity}
-                            onChange={handleTextChange}
-                            className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm ${errors.quantity
-                                ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-                                : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-                                }`}
-                            min="1"
-                            disabled={isSubmitting}
-                        />
-                        {errors.quantity && <p className="text-red-500 text-xs mt-1">{errors.quantity}</p>}
-                    </div>
-
-                    <div>
-                        <Label htmlFor="location_id" className="block text-sm font-medium text-gray-700">
-                            Select Location *
-                        </Label>
-                        <select
-                            id="location_id"
-                            name="location_id"
-                            value={formData.location_id}
-                            onChange={handleTextChange}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                            disabled={isSubmitting || isLoadingLocations}
-                        >
-                            <option value="">Select a location</option>
-                            {locations.map(location => (
-                                <option key={location.id} value={location.id}>
-                                    {location.name}
-                                </option>
-                            ))}
-                        </select>
-                        {isLoadingLocations && (
-                            <div className="mt-1 flex items-center">
-                                <LoaderCircle className="h-4 w-4 animate-spin text-blue-500 mr-2" />
-                                <span className="text-sm text-gray-500">Loading locations...</span>
+                            <div>
+                                <Label htmlFor="notes" className="block text-sm font-semibold text-gray-700 mb-2">
+                                    General Notes
+                                </Label>
+                                <div className="relative">
+                                    <MessageSquare className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                                    <textarea
+                                        id="notes"
+                                        name="notes"
+                                        value={formData.notes}
+                                        onChange={handleTextChange}
+                                        disabled={isSubmitting}
+                                        placeholder="Any additional information..."
+                                        className="w-full py-3 pl-10 pr-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 resize-none"
+                                        rows={3}
+                                    />
+                                </div>
                             </div>
-                        )}
-                        {errors.location_id && <p className="text-red-500 text-xs mt-1">{errors.location_id}</p>}
+                        </div>
                     </div>
 
-                    <div>
-                        <div className="flex justify-between items-center mb-2">
-                            <Label className="block text-sm font-medium text-gray-700">
-                                Items to Request
-                            </Label>
+                    {/* Items Section */}
+                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-xl">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-semibold text-gray-900">Requested Items</h3>
                             <button
                                 type="button"
                                 onClick={() => setShowItemSearch(true)}
-                                className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800"
+                                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl hover:from-purple-600 hover:to-purple-700 shadow-md hover:shadow-lg transition-all duration-200"
                                 disabled={isSubmitting}
                             >
-                                <Plus className="h-4 w-4 mr-1" />
+                                <Plus className="h-4 w-4" />
                                 Add Item
                             </button>
                         </div>
 
-                        {errors.items && <p className="text-red-500 text-xs mb-2">{errors.items}</p>}
+                        {errors.items && <p className="text-red-500 text-sm mb-4">{errors.items}</p>}
 
                         {showItemSearch && (
-                            <div className="mb-4 border p-3 rounded-md bg-gray-50">
-                                <div className="flex items-center mb-3">
+                            <div className="mb-6 bg-white border border-purple-200 p-4 rounded-xl shadow-sm">
+                                <div className="flex items-center mb-4">
                                     <div className="relative flex-grow">
-                                        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                            <Search className="h-4 w-4 text-gray-400" />
-                                        </div>
+                                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                                         <input
                                             type="text"
-                                            className="pl-10 py-2 pr-3 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                            className="pl-10 py-3 pr-3 block w-full rounded-xl border-gray-300 shadow-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
                                             placeholder="Search items by name or SKU..."
                                             value={searchQuery}
                                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -426,98 +434,89 @@ export default function CreateRequisitionModal({ show, onClose, onSuccess }: Cre
                                             setShowItemSearch(false);
                                             setSearchQuery('');
                                         }}
-                                        className="ml-2 text-gray-500 hover:text-gray-700"
+                                        className="ml-3 text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-xl transition-all duration-200"
                                     >
                                         <X className="h-5 w-5" />
                                     </button>
                                 </div>
 
-                                {isLoadingItems ? (
-                                    <div className="flex justify-center items-center h-24">
-                                        <LoaderCircle className="h-5 w-5 animate-spin text-blue-500" />
-                                        <span className="ml-2 text-sm text-gray-600">Loading items...</span>
-                                    </div>
-                                ) : availableItems.length === 0 ? (
-                                    <div className="text-center py-4">
-                                        <p className="text-sm text-gray-500">No inventory items available</p>
-                                        <p className="text-xs text-gray-400 mt-1">Make sure you have active items with stock in your inventory</p>
-                                    </div>
-                                ) : searchQuery.trim() === '' ? (
-                                    <div className="text-center py-4">
-                                        <p className="text-sm text-gray-500">Type to search for items</p>
-                                        <p className="text-xs text-gray-400 mt-1">Available items: {availableItems.length}</p>
-                                    </div>
-                                ) : filteredItems.length > 0 ? (
-                                    <div className="max-h-48 overflow-y-auto">
-                                        <ul className="divide-y divide-gray-200">
+                                <div className="max-h-64 overflow-y-auto">
+                                    {isLoadingItems ? (
+                                        <div className="flex justify-center items-center h-32">
+                                            <LoaderCircle className="h-6 w-6 animate-spin text-purple-500" />
+                                            <span className="ml-2 text-gray-600">Loading items...</span>
+                                        </div>
+                                    ) : availableItems.length === 0 ? (
+                                        <div className="text-center py-8">
+                                            <Package className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                                            <p className="text-gray-500 font-medium">No inventory items available</p>
+                                            <p className="text-sm text-gray-400 mt-1">Make sure you have active items with stock</p>
+                                        </div>
+                                    ) : searchQuery.trim() === '' ? (
+                                        <div className="text-center py-8">
+                                            <Search className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                                            <p className="text-gray-500 font-medium">Start typing to search</p>
+                                            <p className="text-sm text-gray-400 mt-1">{availableItems.length} items available</p>
+                                        </div>
+                                    ) : filteredItems.length > 0 ? (
+                                        <div className="grid gap-2">
                                             {filteredItems.map(item => (
-                                                <li key={item.id} className="py-2">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleAddItem(item)}
-                                                        className="w-full text-left px-2 py-1 hover:bg-gray-100 rounded flex items-center justify-between"
-                                                    >
-                                                        <div className="flex items-center">
-                                                            <Package className="h-5 w-5 text-gray-400 mr-2" />
-                                                            <div>
-                                                                <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                                                                <div className="text-xs text-gray-500">SKU: {item.sku}</div>
-                                                            </div>
+                                                <button
+                                                    key={item.id}
+                                                    type="button"
+                                                    onClick={() => handleAddItem(item)}
+                                                    className="flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-200 hover:border-purple-300 transition-all duration-200"
+                                                >
+                                                    <div className="flex items-center">
+                                                        <div className="bg-gradient-to-br from-purple-100 to-purple-200 p-2 rounded-lg mr-3">
+                                                            <Package className="h-5 w-5 text-purple-600" />
                                                         </div>
-                                                        <div className="text-xs text-gray-600">
-                                                            Available: {item.quantity} {item.unit_of_measure?.abbreviation || ''}
+                                                        <div className="text-left">
+                                                            <div className="font-semibold text-gray-900">{item.name}</div>
+                                                            <div className="text-sm text-gray-500">SKU: {item.sku}</div>
                                                         </div>
-                                                    </button>
-                                                </li>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className="text-sm font-medium text-gray-900">
+                                                            {item.quantity} {item.unit_of_measure?.abbreviation || 'units'}
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">Available</div>
+                                                    </div>
+                                                </button>
                                             ))}
-                                        </ul>
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-4">
-                                        <p className="text-sm text-gray-500">No matching items found for "{searchQuery}"</p>
-                                        <p className="text-xs text-gray-400 mt-1">Try a different search term</p>
-                                    </div>
-                                )}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-8">
+                                            <Search className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                                            <p className="text-gray-500 font-medium">No items found</p>
+                                            <p className="text-sm text-gray-400 mt-1">Try a different search term</p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
 
                         {items.length > 0 ? (
-                            <div className="border rounded-md overflow-hidden">
-                                <table className="min-w-full divide-y divide-gray-200">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Item
-                                            </th>
-                                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Available
-                                            </th>
-                                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Quantity
-                                            </th>
-                                            <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Action
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
-                                        {items.map((item, index) => (
-                                            <tr key={item.item_id}>
-                                                <td className="px-4 py-3 whitespace-nowrap">
-                                                    <div className="flex items-center">
-                                                        <Package className="h-5 w-5 text-gray-400 mr-2" />
-                                                        <div>
-                                                            <div className="text-sm font-medium text-gray-900">{item.item.name}</div>
-                                                            <div className="text-xs text-gray-500">SKU: {item.item.sku}</div>
-                                                        </div>
+                            <div className="space-y-4">
+                                {items.map((item, index) => (
+                                    <div key={item.item_id} className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex items-center flex-grow">
+                                                <div className="bg-gradient-to-br from-blue-100 to-blue-200 p-2 rounded-lg mr-3">
+                                                    <Package className="h-5 w-5 text-blue-600" />
+                                                </div>
+                                                <div className="flex-grow">
+                                                    <div className="font-semibold text-gray-900">{item.item.name}</div>
+                                                    <div className="text-sm text-gray-500">SKU: {item.item.sku}</div>
+                                                    <div className="text-sm text-gray-600 mt-1">
+                                                        Available: {item.item.quantity} {item.item.unit_of_measure?.abbreviation || 'units'}
                                                     </div>
-                                                </td>
-                                                <td className="px-4 py-3 whitespace-nowrap">
-                                                    <span className="text-sm text-gray-900">
-                                                        {item.item.quantity} {item.item.unit_of_measure?.abbreviation || ''}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-3 whitespace-nowrap">
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-4">
+                                                <div className="text-right">
+                                                    <Label className="text-xs text-gray-500 block mb-1">Quantity</Label>
                                                     <div className="flex items-center">
                                                         <input
                                                             type="number"
@@ -525,72 +524,79 @@ export default function CreateRequisitionModal({ show, onClose, onSuccess }: Cre
                                                             max={item.item.quantity}
                                                             value={item.quantity}
                                                             onChange={(e) => handleQuantityChange(index, e.target.value)}
-                                                            className={`block w-20 rounded-md shadow-sm sm:text-sm ${errors[`item_${index}`]
+                                                            className={`w-20 py-2 px-3 rounded-lg border text-sm ${errors[`item_${index}`]
                                                                 ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-                                                                : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                                                                : 'border-gray-300 focus:border-green-500 focus:ring-green-500'
                                                                 }`}
                                                             disabled={isSubmitting}
                                                         />
-                                                        <span className="ml-1 text-xs text-gray-500">
-                                                            {item.item.unit_of_measure?.abbreviation || ''}
+                                                        <span className="ml-2 text-sm text-gray-500">
+                                                            {item.item.unit_of_measure?.abbreviation || 'units'}
                                                         </span>
                                                     </div>
                                                     {errors[`item_${index}`] && (
                                                         <p className="text-red-500 text-xs mt-1">{errors[`item_${index}`]}</p>
                                                     )}
-                                                </td>
-                                                <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleRemoveItem(item.item_id)}
-                                                        className="text-red-600 hover:text-red-900"
-                                                        disabled={isSubmitting}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                                </div>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveItem(item.item_id)}
+                                                    className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg transition-all duration-200"
+                                                    disabled={isSubmitting}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-3">
+                                            <Label className="text-xs text-gray-500 block mb-1">Item-specific notes</Label>
+                                            <textarea
+                                                value={item.notes || ''}
+                                                onChange={(e) => handleItemNotesChange(index, e.target.value)}
+                                                placeholder="Any specific notes for this item..."
+                                                className="w-full py-2 px-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                                                rows={2}
+                                                disabled={isSubmitting}
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         ) : (
-                            <div className="text-center py-8 border border-dashed rounded-md">
-                                <Package className="h-10 w-10 text-gray-300 mx-auto mb-2" />
-                                <p className="text-gray-500 text-sm">No items added yet</p>
+                            <div className="text-center py-12 bg-white border-2 border-dashed border-gray-300 rounded-xl">
+                                <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                                <p className="text-gray-500 font-medium text-lg mb-2">No items added yet</p>
+                                <p className="text-gray-400 text-sm mb-4">Start by adding items to your requisition</p>
                                 <button
                                     type="button"
                                     onClick={() => setShowItemSearch(true)}
-                                    className="mt-2 text-blue-600 hover:text-blue-800 text-sm"
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl hover:from-purple-600 hover:to-purple-700 shadow-md hover:shadow-lg transition-all duration-200"
                                 >
-                                    Click "Add Item" to start
+                                    <Plus className="h-4 w-4" />
+                                    Add Your First Item
                                 </button>
                             </div>
                         )}
                     </div>
 
-                    {errors.general && (
-                        <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm mb-4">
-                            {errors.general}
-                        </div>
-                    )}
-
-                    <div className="flex justify-end gap-2 pt-4 border-t">
+                    <div className="flex justify-end gap-4 pt-6">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-md"
+                            className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-all duration-200"
                             disabled={isSubmitting}
                         >
                             Cancel
                         </button>
                         <Button
                             type="submit"
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
-                            disabled={isSubmitting}
+                            className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50"
+                            disabled={isSubmitting || items.length === 0}
                         >
                             {isSubmitting && <LoaderCircle className="h-4 w-4 mr-2 animate-spin" />}
-                            Create Requisition
+                            {isSubmitting ? 'Creating Requisitions...' : `Create ${items.length} Requisition${items.length > 1 ? 's' : ''}`}
                         </Button>
                     </div>
                 </form>

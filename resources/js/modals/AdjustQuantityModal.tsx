@@ -77,49 +77,54 @@ export default function AdjustQuantityModal({ show, onClose, onSuccess, item }: 
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">Adjust Inventory Quantity</h2>
+    <div
+      className="fixed inset-0 flex items-center justify-center bg-black/30 backdrop-blur-sm z-50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md m-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3 mb-6">
+          <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-xl p-3 shadow-lg">
+            <Package className="h-5 w-5" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900">Adjust Inventory Quantity</h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
+            className="ml-auto text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-xl transition-all duration-200"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="mb-4 bg-blue-50 p-3 rounded-md">
+        <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
           <div className="flex items-center">
-            {item.unit_of_measure ? (
-              <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                <Package className="h-5 w-5 text-blue-600" />
-              </div>
-            ) : (
-              <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                <Package className="h-5 w-5 text-blue-600" />
-              </div>
-            )}
+            <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mr-4 shadow-lg">
+              <Package className="h-6 w-6 text-white" />
+            </div>
             <div>
-              <p className="font-medium text-gray-700">{item.name}</p>
-              <p className="text-sm text-gray-500">
-                Current Stock: {item.quantity} {item.unit_of_measure?.abbreviation || ''}
+              <p className="font-semibold text-gray-900 text-lg">{item.name}</p>
+              <p className="text-sm text-gray-600 font-medium">
+                Current Stock: <span className="text-blue-600 font-bold">{item.quantity}</span> {item.unit_of_measure?.abbreviation || ''}
               </p>
-              <p className="text-sm text-gray-500">SKU: {item.sku}</p>
+              <p className="text-xs text-gray-500 font-mono bg-white px-2 py-0.5 rounded mt-1">
+                SKU: {item.sku}
+              </p>
             </div>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="grid gap-2">
-            <Label>Adjustment Type</Label>
-            <div className="grid grid-cols-2 gap-2">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <Label className="block text-sm font-semibold text-gray-700 mb-3">Adjustment Type</Label>
+            <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                className={`flex items-center justify-center px-4 py-2 rounded-md border ${
+                className={`flex items-center justify-center px-4 py-3 rounded-xl border-2 font-semibold transition-all duration-200 ${
                   adjustmentType === 'add'
-                    ? 'bg-green-100 border-green-300 text-green-800'
-                    : 'border-gray-300 hover:bg-gray-50'
+                    ? 'bg-gradient-to-r from-green-500 to-green-600 border-green-500 text-white shadow-lg'
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'
                 }`}
                 onClick={() => setAdjustmentType('add')}
               >
@@ -128,10 +133,10 @@ export default function AdjustQuantityModal({ show, onClose, onSuccess, item }: 
               </button>
               <button
                 type="button"
-                className={`flex items-center justify-center px-4 py-2 rounded-md border ${
+                className={`flex items-center justify-center px-4 py-3 rounded-xl border-2 font-semibold transition-all duration-200 ${
                   adjustmentType === 'remove'
-                    ? 'bg-red-100 border-red-300 text-red-800'
-                    : 'border-gray-300 hover:bg-gray-50'
+                    ? 'bg-gradient-to-r from-red-500 to-red-600 border-red-500 text-white shadow-lg'
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'
                 }`}
                 onClick={() => setAdjustmentType('remove')}
               >
@@ -141,8 +146,10 @@ export default function AdjustQuantityModal({ show, onClose, onSuccess, item }: 
             </div>
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="quantity">Quantity to {adjustmentType === 'add' ? 'Add' : 'Remove'}</Label>
+          <div>
+            <Label htmlFor="quantity" className="block text-sm font-semibold text-gray-700 mb-2">
+              Quantity to {adjustmentType === 'add' ? 'Add' : 'Remove'}
+            </Label>
             <Input
               id="quantity"
               type="number"
@@ -152,48 +159,60 @@ export default function AdjustQuantityModal({ show, onClose, onSuccess, item }: 
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
               disabled={isSubmitting}
-              className="w-full"
+              className="py-3 px-4 rounded-xl border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+              placeholder="Enter quantity"
             />
-            {errors.quantity && <p className="text-red-500 text-xs mt-1">{errors.quantity}</p>}
+            {errors.quantity && <p className="text-red-500 text-sm mt-1">{errors.quantity}</p>}
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="reason">Reason for Adjustment</Label>
+          <div>
+            <Label htmlFor="reason" className="block text-sm font-semibold text-gray-700 mb-2">
+              Reason for Adjustment *
+            </Label>
             <textarea
               id="reason"
               required
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               disabled={isSubmitting}
-              placeholder="Explain why you're adjusting the quantity"
-              className="w-full p-2 border rounded-md min-h-[80px]"
+              placeholder="Explain why you're adjusting the quantity..."
+              className="w-full py-3 px-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 resize-none"
               rows={3}
             />
-            {errors.reason && <p className="text-red-500 text-xs mt-1">{errors.reason}</p>}
+            {errors.reason && <p className="text-red-500 text-sm mt-1">{errors.reason}</p>}
           </div>
 
           {errors.general && (
-            <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm">
+            <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-sm">
               {errors.general}
             </div>
           )}
 
-          <div className="flex justify-end gap-2 mt-4">
+          <div className="flex justify-end gap-4 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-md"
+              className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-all duration-200"
               disabled={isSubmitting}
             >
               Cancel
             </button>
             <Button
               type="submit"
-              className={adjustmentType === 'add' ? "bg-green-600 hover:bg-green-700 text-white" : "bg-red-600 hover:bg-red-700 text-white"}
+              className={`px-6 py-3 font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 ${
+                adjustmentType === 'add'
+                  ? "bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white"
+                  : "bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white"
+              }`}
               disabled={isSubmitting}
             >
               {isSubmitting && <LoaderCircle className="h-4 w-4 mr-2 animate-spin" />}
-              {adjustmentType === 'add' ? 'Add to Inventory' : 'Remove from Inventory'}
+              {isSubmitting
+                ? 'Processing...'
+                : adjustmentType === 'add'
+                  ? 'Add to Inventory'
+                  : 'Remove from Inventory'
+              }
             </Button>
           </div>
         </form>

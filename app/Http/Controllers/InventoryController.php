@@ -109,7 +109,7 @@ class InventoryController extends Controller
             'quantity' => 'required|numeric|min:0',
             'reorder_level' => 'required|numeric|min:0',
             'unit_price' => 'nullable|numeric|min:0',
-            'location' => 'nullable|string|max:255',
+            'location_id' => 'nullable|exists:locations,id',
             'image' => 'nullable|image|max:2048',
         ]);
 
@@ -131,7 +131,7 @@ class InventoryController extends Controller
             'reorder_level' => $request->reorder_level,
             'unit_price' => $request->unit_price,
             'is_active' => true,
-            'location' => $request->location,
+            'location_id' => $request->location_id,
             'image_path' => $imagePath,
             'created_by' => $userId,
             'updated_by' => $userId,
@@ -174,7 +174,7 @@ class InventoryController extends Controller
             'reorder_level' => 'required|numeric|min:0',
             'unit_price' => 'nullable|numeric|min:0',
             'is_active' => 'required|boolean',
-            'location' => 'nullable|string|max:255',
+            'location_id' => 'nullable|exists:locations,id',
             'image' => 'nullable|image|max:2048',
         ]);
 
@@ -197,7 +197,7 @@ class InventoryController extends Controller
         $item->reorder_level = $request->reorder_level;
         $item->unit_price = $request->unit_price;
         $item->is_active = $request->is_active;
-        $item->location = $request->location;
+        $item->location_id = $request->location_id;
         $item->updated_by = Auth::id();
 
         $item->save();

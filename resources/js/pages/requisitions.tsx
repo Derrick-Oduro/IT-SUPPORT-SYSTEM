@@ -6,7 +6,8 @@ import { Head } from '@inertiajs/react';
 import {
     Search, Plus, ClipboardList, X, CheckCircle,
     AlertTriangle, Clock, Package, Filter, RefreshCw,
-    ChevronDown, ChevronUp, Eye, ShoppingCart
+    ChevronDown, ChevronUp, Eye, ShoppingCart, User,
+    Calendar, Hash, TrendingUp
 } from 'lucide-react';
 import type { PageProps } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -30,6 +31,7 @@ export default function Requisitions() {
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [showFilters, setShowFilters] = useState(false);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showViewModal, setShowViewModal] = useState(false);
     const [showApproveModal, setShowApproveModal] = useState(false);
@@ -130,56 +132,60 @@ export default function Requisitions() {
         switch (status) {
             case 'pending':
                 return (
-                    <Badge className="bg-blue-100 text-blue-800 flex items-center gap-1">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm">
                         <Clock className="h-3 w-3" />
                         Pending
-                    </Badge>
+                    </span>
                 );
             case 'approved':
                 return (
-                    <Badge className="bg-green-100 text-green-800 flex items-center gap-1">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-gradient-to-r from-green-500 to-green-600 text-white shadow-sm">
                         <CheckCircle className="h-3 w-3" />
                         Approved
-                    </Badge>
+                    </span>
                 );
             case 'partially_approved':
                 return (
-                    <Badge className="bg-amber-100 text-amber-800 flex items-center gap-1">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-sm">
                         <AlertTriangle className="h-3 w-3" />
                         Partial
-                    </Badge>
+                    </span>
                 );
             case 'rejected':
                 return (
-                    <Badge className="bg-red-100 text-red-800 flex items-center gap-1">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white shadow-sm">
                         <X className="h-3 w-3" />
                         Rejected
-                    </Badge>
+                    </span>
                 );
             case 'fulfilled':
                 return (
-                    <Badge className="bg-purple-100 text-purple-800 flex items-center gap-1">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-sm">
                         <CheckCircle className="h-3 w-3" />
                         Fulfilled
-                    </Badge>
+                    </span>
                 );
             default:
-                return <Badge variant="outline">{status}</Badge>;
+                return (
+                    <span className="inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                        {status}
+                    </span>
+                );
         }
     };
 
     const getUrgencyBadge = (level: string) => {
         switch (level) {
             case 'low':
-                return <Badge className="bg-gray-100 text-gray-800">Low</Badge>;
+                return <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">Low</span>;
             case 'medium':
-                return <Badge className="bg-blue-100 text-blue-800">Medium</Badge>;
+                return <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">Medium</span>;
             case 'high':
-                return <Badge className="bg-orange-100 text-orange-800">High</Badge>;
+                return <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-orange-100 text-orange-800">High</span>;
             case 'critical':
-                return <Badge className="bg-red-100 text-red-800">Critical</Badge>;
+                return <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">Critical</span>;
             default:
-                return <Badge variant="outline">{level}</Badge>;
+                return <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">{level}</span>;
         }
     };
 
@@ -188,169 +194,289 @@ export default function Requisitions() {
         return date.toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
-            day: 'numeric'
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
         });
     };
+
+    // Get requisition stats
+    const getRequisitionStats = () => {
+        const total = filteredRequisitions.length;
+        const pending = filteredRequisitions.filter(req => req.status === 'pending').length;
+        const approved = filteredRequisitions.filter(req => req.status === 'approved').length;
+        const fulfilled = filteredRequisitions.filter(req => req.status === 'fulfilled').length;
+        return { total, pending, approved, fulfilled };
+    };
+
+    const stats = getRequisitionStats();
 
     return (
         <AppLayout>
             <Head title="Requisitions" />
 
             {/* Header Section */}
-            <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-                <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
-                    <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-                        <ShoppingCart className="h-8 w-8 mr-2 text-blue-600" />
-                        Requisitions
-                    </h1>
-
-                    <Button
-                        onClick={handleCreateRequisition}
-                        className="bg-blue-600 hover:bg-blue-700"
-                    >
-                        <Plus className="h-4 w-4 mr-2" />
-                        New Requisition
-                    </Button>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-3 mb-6">
-                    <div className="relative flex-grow">
-                        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                            <Search className="h-5 w-5 text-gray-400" />
-                        </div>
-                        <input
-                            type="text"
-                            className="pl-10 py-2 pr-3 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                            placeholder="Search by reference number, requestor, or items..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
+            <div className="mb-8">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                    <div>
+                        <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent mb-2">
+                            Purchase Requisitions
+                        </h1>
+                        <p className="text-gray-600">Manage and track purchase requests</p>
                     </div>
 
-                    <select
-                        className="py-2 px-3 block w-full sm:w-48 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                    >
-                        <option value="all">All Statuses</option>
-                        <option value="pending">Pending</option>
-                        <option value="approved">Approved</option>
-                        <option value="partially_approved">Partially Approved</option>
-                        <option value="rejected">Rejected</option>
-                        <option value="fulfilled">Fulfilled</option>
-                    </select>
-
                     <button
-                        onClick={fetchRequisitions}
-                        className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        onClick={handleCreateRequisition}
+                        className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2"
                     >
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Refresh
+                        <Plus className="h-5 w-5" />
+                        New Requisition
                     </button>
                 </div>
             </div>
 
-            {/* Requisitions Table */}
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <StatCard
+                    icon={<ClipboardList className="w-6 h-6" />}
+                    label="Total Requisitions"
+                    value={stats.total}
+                    color="blue"
+                />
+                <StatCard
+                    icon={<Clock className="w-6 h-6" />}
+                    label="Pending Review"
+                    value={stats.pending}
+                    color="amber"
+                />
+                <StatCard
+                    icon={<CheckCircle className="w-6 h-6" />}
+                    label="Approved"
+                    value={stats.approved}
+                    color="green"
+                />
+                <StatCard
+                    icon={<Package className="w-6 h-6" />}
+                    label="Fulfilled"
+                    value={stats.fulfilled}
+                    color="purple"
+                />
+            </div>
+
+            {/* Search and Filters */}
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-8">
+                <div className="flex flex-col lg:flex-row gap-4">
+                    {/* Search Bar */}
+                    <div className="flex-1">
+                        <div className="relative">
+                            <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                                <Search className="h-5 w-5 text-gray-400" />
+                            </div>
+                            <input
+                                type="text"
+                                className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-500"
+                                placeholder="Search by reference number, requestor, or items..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Filter Toggle */}
+                    <button
+                        onClick={() => setShowFilters(!showFilters)}
+                        className={`flex items-center gap-2 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
+                            showFilters
+                                ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                                : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
+                        }`}
+                    >
+                        <Filter className="h-4 w-4" />
+                        Filters
+                        <ChevronDown className={`h-4 w-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {/* Refresh Button */}
+                    <button
+                        onClick={fetchRequisitions}
+                        className="flex items-center gap-2 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl border border-gray-200 transition-all duration-200"
+                        disabled={isLoading}
+                    >
+                        <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                        Refresh
+                    </button>
+                </div>
+
+                {/* Expandable Filters */}
+                {showFilters && (
+                    <div className="mt-6 pt-6 border-t border-gray-200">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                                <select
+                                    className="w-full py-3 px-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                                    value={statusFilter}
+                                    onChange={(e) => setStatusFilter(e.target.value)}
+                                >
+                                    <option value="all">All Statuses</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="approved">Approved</option>
+                                    <option value="partially_approved">Partially Approved</option>
+                                    <option value="rejected">Rejected</option>
+                                    <option value="fulfilled">Fulfilled</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
+                                <select
+                                    className="w-full py-3 px-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                                    value={`${sortField}-${sortDirection}`}
+                                    onChange={(e) => {
+                                        const [field, direction] = e.target.value.split('-');
+                                        setSortField(field as 'created_at' | 'urgency_level');
+                                        setSortDirection(direction as 'asc' | 'desc');
+                                    }}
+                                >
+                                    <option value="created_at-desc">Newest First</option>
+                                    <option value="created_at-asc">Oldest First</option>
+                                    <option value="urgency_level-desc">High Priority First</option>
+                                    <option value="urgency_level-asc">Low Priority First</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Requisitions List */}
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
                 {isLoading ? (
                     <div className="flex justify-center items-center h-64">
-                        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
-                        <span className="ml-2 text-gray-600">Loading requisitions...</span>
+                        <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+                            <span className="text-gray-600 font-medium">Loading requisitions...</span>
+                        </div>
                     </div>
                 ) : filteredRequisitions.length === 0 ? (
                     <div className="flex flex-col justify-center items-center h-64">
-                        <ClipboardList className="h-16 w-16 text-gray-300 mb-4" />
-                        <p className="text-gray-500 text-lg">No requisitions found</p>
+                        <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-full p-6 mb-4">
+                            <ClipboardList className="h-16 w-16 text-gray-400" />
+                        </div>
+                        <h3 className="text-xl font-semibold text-gray-800 mb-2">No requisitions found</h3>
+                        <p className="text-gray-500 mb-4">
+                            {searchQuery ? 'Try adjusting your search terms' : 'Get started by creating your first requisition'}
+                        </p>
                         {searchQuery && (
                             <button
                                 onClick={() => setSearchQuery('')}
-                                className="mt-2 text-blue-500 hover:text-blue-700"
+                                className="text-blue-600 hover:text-blue-700 font-medium"
                             >
                                 Clear search
                             </button>
                         )}
-                        <button
-                            onClick={handleCreateRequisition}
-                            className="mt-4 inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
-                        >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Create a requisition
-                        </button>
+                        {!searchQuery && (
+                            <button
+                                onClick={handleCreateRequisition}
+                                className="mt-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2"
+                            >
+                                <Plus className="h-4 w-4" />
+                                Create your first requisition
+                            </button>
+                        )}
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
+                        <table className="min-w-full">
+                            <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                                 <tr>
-                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Item
+                                    <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                        Item Details
                                     </th>
-                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                                         <button
-                                            className="flex items-center space-x-1"
+                                            className="flex items-center gap-1 hover:text-blue-600 transition-colors"
                                             onClick={() => handleSort('created_at')}
                                         >
-                                            <span>Date</span>
+                                            <span>Date Requested</span>
                                             {sortField === 'created_at' && (
                                                 sortDirection === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
                                             )}
                                         </button>
                                     </th>
-                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Requested By
+                                    <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                        Requestor
                                     </th>
-                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                                         Quantity
                                     </th>
-                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                                         Status
                                     </th>
-                                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th scope="col" className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
                                         Actions
                                     </th>
                                 </tr>
                             </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
+                            <tbody className="divide-y divide-gray-100">
                                 {filteredRequisitions.map((requisition) => (
                                     <tr
                                         key={requisition.id}
-                                        className="hover:bg-gray-50"
+                                        className="hover:bg-gray-50 transition-colors duration-200"
                                     >
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex items-center">
-                                                <Package className="h-5 w-5 text-gray-400 mr-2" />
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-4">
+                                                <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl p-3 shadow-lg">
+                                                    <Package className="h-5 w-5" />
+                                                </div>
                                                 <div>
-                                                    <div className="text-sm font-medium text-gray-900">
+                                                    <div className="font-semibold text-gray-900 text-lg mb-1">
                                                         {requisition.item?.name || 'Unknown Item'}
                                                     </div>
-                                                    <div className="text-xs text-gray-500">
-                                                        SKU: {requisition.item?.sku || 'N/A'}
+                                                    <div className="text-sm text-gray-500 flex items-center gap-2">
+                                                        <Hash className="h-3 w-3" />
+                                                        <span className="font-mono bg-gray-100 px-2 py-0.5 rounded">
+                                                            {requisition.item?.sku || 'N/A'}
+                                                        </span>
                                                     </div>
+                                                    {requisition.reference_number && (
+                                                        <div className="text-xs text-gray-400 mt-1">
+                                                            Ref: {requisition.reference_number}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm text-gray-900">
-                                                {formatDate(requisition.created_at)}
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                <Calendar className="h-4 w-4" />
+                                                <span>{formatDate(requisition.created_at)}</span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm text-gray-900">
-                                                {requisition.created_by?.name || 'Unknown User'}
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-2">
+                                                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center text-white font-semibold text-sm">
+                                                    {(requisition.created_by?.name || 'U').charAt(0).toUpperCase()}
+                                                </div>
+                                                <span className="font-medium text-gray-900">
+                                                    {requisition.created_by?.name || 'Unknown User'}
+                                                </span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm text-gray-900">
-                                                {requisition.quantity} {requisition.item?.unit_of_measure?.abbreviation || 'units'}
+                                        <td className="px-6 py-4">
+                                            <div className="text-lg font-bold text-gray-900">
+                                                {requisition.quantity}
+                                            </div>
+                                            <div className="text-xs text-gray-500">
+                                                {requisition.item?.unit_of_measure?.abbreviation || 'units'}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
+                                        <td className="px-6 py-4">
                                             {getStatusBadge(requisition.status)}
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <td className="px-6 py-4">
                                             <div className="flex justify-end space-x-2">
                                                 <button
-                                                    className="text-indigo-600 hover:text-indigo-900"
+                                                    className="p-2 text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 rounded-xl transition-all duration-200"
                                                     onClick={() => handleViewRequisition(requisition)}
                                                     title="View Details"
                                                 >
@@ -359,7 +485,7 @@ export default function Requisitions() {
 
                                                 {isAdmin && requisition.status === 'pending' && (
                                                     <button
-                                                        className="text-blue-600 hover:text-blue-900"
+                                                        className="p-2 text-green-600 hover:text-green-900 hover:bg-green-50 rounded-xl transition-all duration-200"
                                                         onClick={() => handleApproveRequisition(requisition)}
                                                         title="Review Requisition"
                                                     >
@@ -396,5 +522,36 @@ export default function Requisitions() {
                 requisition={selectedRequisition}
             />
         </AppLayout>
+    );
+}
+
+function StatCard({
+    icon,
+    label,
+    value,
+    color
+}: {
+    icon: React.ReactNode;
+    label: string;
+    value: number;
+    color: string;
+}) {
+    const colorClasses = {
+        blue: 'bg-gradient-to-br from-blue-500 to-blue-600',
+        green: 'bg-gradient-to-br from-green-500 to-green-600',
+        amber: 'bg-gradient-to-br from-amber-500 to-amber-600',
+        purple: 'bg-gradient-to-br from-purple-500 to-purple-600',
+    }[color];
+
+    return (
+        <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 p-6 border border-gray-100">
+            <div className="flex items-center justify-between mb-4">
+                <div className={`${colorClasses} text-white rounded-xl p-3 shadow-lg`}>
+                    {icon}
+                </div>
+            </div>
+            <div className="text-3xl font-bold text-gray-800 mb-1">{value}</div>
+            <div className="text-gray-600 font-medium">{label}</div>
+        </div>
     );
 }

@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { type NavItem } from '@/types';
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { type PropsWithChildren } from 'react';
 
 const sidebarNavItems: NavItem[] = [
@@ -22,6 +22,36 @@ const sidebarNavItems: NavItem[] = [
         href: '/settings/appearance',
         icon: null,
     },
+    {
+        title: 'Permissions',
+        href: '/settings/permissions',
+        icon: null,
+    },
+    {
+        title: 'Inventory Options',
+        href: '/settings/inventory-options',
+        icon: null,
+    },
+    {
+        title: 'Locations',
+        href: '/settings/locations',
+        icon: null,
+    },
+    {
+        title: 'Notifications',
+        href: '/settings/notifications',
+        icon: null,
+    },
+    {
+        title: 'Backup & Restore',
+        href: '/settings/backup-restore',
+        icon: null,
+    },
+    {
+        title: 'Audit Logs',
+        href: '/settings/audit-logs',
+        icon: null,
+    },
 ];
 
 export default function SettingsLayout({ children }: PropsWithChildren) {
@@ -30,7 +60,23 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
         return null;
     }
 
+    const { auth } = usePage<any>().props;
+    const role = auth.user.role?.name;
+    const isAdmin = role === 'Admin';
+
     const currentPath = window.location.pathname;
+
+    // Filter nav items based on user role
+    const filteredNavItems = sidebarNavItems.filter(item => {
+        // Admin-only pages
+        const adminOnlyPages = ['/settings/permissions', '/settings/inventory-options', '/settings/locations', '/settings/backup-restore', '/settings/audit-logs'];
+        
+        if (adminOnlyPages.includes(item.href) && !isAdmin) {
+            return false;
+        }
+        
+        return true;
+    });
 
     return (
         <div className="px-4 py-6">
@@ -39,7 +85,7 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
             <div className="flex flex-col space-y-8 lg:flex-row lg:space-y-0 lg:space-x-12">
                 <aside className="w-full max-w-xl lg:w-48">
                     <nav className="flex flex-col space-y-1 space-x-0">
-                        {sidebarNavItems.map((item, index) => (
+                        {filteredNavItems.map((item, index) => (
                             <Button
                                 key={`${item.href}-${index}`}
                                 size="sm"
