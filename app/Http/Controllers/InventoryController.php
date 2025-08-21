@@ -7,10 +7,12 @@ use App\Models\ItemCategory;
 use App\Models\UnitOfMeasure;
 use App\Models\InventoryTransaction;
 use App\Models\Location;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
+use App\Notifications\InventoryNotification;
 
 class InventoryController extends Controller
 {
@@ -150,6 +152,32 @@ class InventoryController extends Controller
             ]);
         }
 
+        // Send notification to all admins about new item creation
+        try {
+            $admins = User::whereHas('role', function($query) {
+                $query->where('name', 'Admin');
+            })->where('id', '!=', $userId)->get();
+
+            \Log::info('Found admins for notification', [
+                'count' => $admins->count(),
+                'admin_ids' => $admins->pluck('id')->toArray()
+            ]);
+
+            foreach ($admins as $admin) {
+                $admin->notify(new InventoryNotification([
+                    'title' => 'New Item Added',
+                    'message' => "New inventory item '{$item->name}' has been added to the system",
+                    'item_id' => $item->id,
+                    'action_url' => '/inventory',
+                    'icon' => 'inventory'
+                ]));
+
+                \Log::info('Notification sent to admin: ' . $admin->id);
+            }
+        } catch (\Exception $e) {
+            \Log::error('Error sending notifications: ' . $e->getMessage());
+        }
+
         return response()->json($item->load(['category', 'unitOfMeasure']), 201);
     }
 
@@ -257,6 +285,23 @@ class InventoryController extends Controller
             'notes' => $request->notes,
             'user_id' => Auth::id(),
         ]);
+
+        // Check for low stock and send notifications
+        if ($item->quantity <= $item->reorder_level) {
+            $admins = User::whereHas('role', function($query) {
+                $query->where('name', 'Admin');
+            })->get();
+
+            foreach ($admins as $admin) {
+                $admin->notify(new \App\Notifications\InventoryNotification([
+                    'title' => 'Low Stock Alert',
+                    'message' => "Item '{$item->name}' is running low. Current stock: {$item->quantity}",
+                    'item_id' => $item->id,
+                    'action_url' => '/inventory',
+                    'icon' => 'inventory'
+                ]));
+            }
+        }
 
         return response()->json([
             'item' => $item->load(['category', 'unitOfMeasure']),
