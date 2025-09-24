@@ -134,4 +134,30 @@ class UsersController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Toggle user status between active and inactive
+     */
+    public function toggleStatus($id)
+    {
+        try {
+            $user = User::findOrFail($id);
+
+            // Prevent deactivating yourself
+            if (Auth::id() == $user->id) {
+                return response()->json(['error' => 'You cannot deactivate your own account'], 400);
+            }
+
+            $user->update(['is_active' => !$user->is_active]);
+
+            $status = $user->is_active ? 'activated' : 'deactivated';
+
+            return response()->json([
+                'message' => "User has been {$status} successfully",
+                'user' => $user->load('role')
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to update user status'], 500);
+        }
+    }
 }

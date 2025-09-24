@@ -21,6 +21,11 @@ type Ticket = {
     priority: string;
     created_at: string;
     updated_at: string;
+    expires_at?: string;
+    is_expired?: boolean;
+    last_activity_at?: string;
+    time_until_expiration?: string;
+    expiration_status?: string;
     submitted_by: {
         id: number;
         name: string;
@@ -98,9 +103,15 @@ export default function Tickets() {
         if (searchQuery.trim() !== '') {
             const query = searchQuery.toLowerCase();
             filtered = filtered.filter(ticket =>
+                // Search by ID (convert to string and check if it includes the query)
+                ticket.id.toString().includes(query) ||
+                // Search by title
                 ticket.title.toLowerCase().includes(query) ||
+                // Search by description
                 ticket.description.toLowerCase().includes(query) ||
+                // Search by submitted user name
                 ticket.submitted_by.name.toLowerCase().includes(query) ||
+                // Search by assigned user name (if exists)
                 (ticket.assigned_to && ticket.assigned_to.name.toLowerCase().includes(query))
             );
         }
@@ -197,6 +208,46 @@ export default function Tickets() {
 
     const stats = getTicketStats();
 
+    // Add expiration badge function
+    const getExpirationBadge = (ticket: Ticket) => {
+        if (!ticket.expiration_status || ticket.expiration_status === 'completed') {
+            return null;
+        }
+
+        const badges = {
+            expired: {
+                class: 'bg-red-100 text-red-800 border-red-200',
+                text: 'EXPIRED',
+                icon: <AlertCircle className="h-3 w-3" />
+            },
+            critical: {
+                class: 'bg-red-50 text-red-700 border-red-200',
+                text: ticket.time_until_expiration || 'Expires Soon',
+                icon: <Clock className="h-3 w-3" />
+            },
+            warning: {
+                class: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+                text: ticket.time_until_expiration || 'Expires Soon',
+                icon: <Clock className="h-3 w-3" />
+            },
+            normal: {
+                class: 'bg-gray-50 text-gray-600 border-gray-200',
+                text: ticket.time_until_expiration || 'On Time',
+                icon: <Clock className="h-3 w-3" />
+            }
+        };
+
+        const badge = badges[ticket.expiration_status as keyof typeof badges];
+        if (!badge) return null;
+
+        return (
+            <span className={`px-2 py-1 text-xs rounded-full font-medium border flex items-center gap-1 ${badge.class}`}>
+                {badge.icon}
+                {badge.text}
+            </span>
+        );
+    };
+
     return (
         <AppLayout>
             <Head title="Tickets" />
@@ -263,7 +314,7 @@ export default function Tickets() {
                             <input
                                 type="text"
                                 className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-500"
-                                placeholder="Search tickets by title, description, or user..."
+                                placeholder="Search tickets by ID, title, description, or user..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
@@ -383,9 +434,14 @@ export default function Tickets() {
                                                 {getStatusIcon(ticket.status)}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <h3 className="font-semibold text-gray-900 text-lg mb-1 truncate">
-                                                    {ticket.title}
-                                                </h3>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <h3 className="font-semibold text-gray-900 text-lg truncate">
+                                                        {ticket.title}
+                                                    </h3>
+                                                    <span className="bg-gray-100 text-gray-600 text-xs font-mono px-2 py-1 rounded-md">
+                                                        #{ticket.id}
+                                                    </span>
+                                                </div>
                                                 <div className="flex items-center gap-4 text-sm text-gray-500">
                                                     <div className="flex items-center gap-1">
                                                         <User className="h-4 w-4" />
@@ -399,6 +455,7 @@ export default function Tickets() {
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-3">
+                                            {getExpirationBadge(ticket)}
                                             <span className={`px-3 py-1.5 text-xs rounded-full font-semibold shadow-sm ${getPriorityBadge(ticket.priority)}`}>
                                                 <span className="flex items-center gap-1">
                                                     <Flag className="h-3 w-3" />
@@ -472,6 +529,7 @@ export default function Tickets() {
 
                                             {/* Action Buttons */}
                                             <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                                                {/* Admin can assign any new ticket */}
                                                 {role === 'Admin' && ticket.status === 'new' && (
                                                     <button
                                                         onClick={() => handleAssignTicket(ticket)}
@@ -481,7 +539,11 @@ export default function Tickets() {
                                                         Assign Agent
                                                     </button>
                                                 )}
-                                                {role === 'IT Agent' && (ticket.status === 'new' || ticket.status === 'in_progress') && ticket.assigned_to?.id === auth.user.id && (
+
+                                                {/* IT Agent can ONLY update tickets assigned to them */}
+                                                {role === 'IT Agent' &&
+                                                 (ticket.status === 'new' || ticket.status === 'in_progress') &&
+                                                 ticket.assigned_to?.id === auth.user.id && (
                                                     <button
                                                         onClick={() => handleUpdateTicket(ticket)}
                                                         className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold py-2 px-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2"

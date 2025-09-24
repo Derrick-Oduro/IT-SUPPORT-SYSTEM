@@ -16,7 +16,7 @@ import {
     LineElement,
     TimeScale,
 } from 'chart.js';
-import { ClipboardList, Package, FileText, MapPin, User, TrendingUp, AlertCircle, CheckCircle } from 'lucide-react';
+import { ClipboardList, Package, FileText, MapPin, User, TrendingUp, AlertCircle, CheckCircle, Clock, Timer, Target } from 'lucide-react';
 import type { ChartData, ChartDataset } from 'chart.js';
 
 ChartJS.register(
@@ -46,6 +46,15 @@ export default function Dashboard() {
         completedTickets: 0,
     });
 
+    // Add completion stats state
+    const [completionStats, setCompletionStats] = useState({
+        average_completion_hours: 0,
+        average_completion_formatted: '0h 0m',
+        total_completed_tickets: 0,
+        completion_by_priority: {},
+        completion_trends: {},
+    });
+
     type BarChartData = ChartData<'bar', number[], string>;
     type DoughnutChartData = ChartData<'doughnut', number[], string>;
     type LineChartData = ChartData<'line', number[], string>;
@@ -63,11 +72,18 @@ export default function Dashboard() {
         datasets: [],
     });
 
+    // Add completion time chart data
+    const [completionTimeData, setCompletionTimeData] = useState<BarChartData>({
+        labels: [],
+        datasets: [],
+    });
+
     useEffect(() => {
         fetchStats();
         fetchTicketStatusData();
         fetchInventoryCategoryData();
         fetchRequisitionStatusData();
+        fetchCompletionStats(); // Add this
     }, []);
 
     const fetchStats = async () => {
@@ -185,6 +201,46 @@ export default function Dashboard() {
         });
     };
 
+    // Add this new function
+    const fetchCompletionStats = async () => {
+        try {
+            const response = await axios.get('/api/tickets/completion-stats');
+            setCompletionStats(response.data);
+
+            // Set completion time by priority chart data
+            const priorities = Object.keys(response.data.completion_by_priority);
+            const avgTimes = priorities.map(priority =>
+                response.data.completion_by_priority[priority].avg_hours || 0
+            );
+
+            setCompletionTimeData({
+                labels: priorities.map(p => p.charAt(0).toUpperCase() + p.slice(1)),
+                datasets: [
+                    {
+                        label: 'Average Hours',
+                        data: avgTimes,
+                        backgroundColor: [
+                            '#EF4444', // Red for critical
+                            '#F59E0B', // Amber for high
+                            '#3B82F6', // Blue for medium
+                            '#10B981', // Green for low
+                        ],
+                        borderColor: [
+                            '#DC2626',
+                            '#D97706',
+                            '#2563EB',
+                            '#059669',
+                        ],
+                        borderWidth: 2,
+                        borderRadius: 8,
+                    },
+                ],
+            });
+        } catch (error) {
+            console.error('Error fetching completion stats:', error);
+        }
+    };
+
     // Role badge color
     const roleColor = {
         Admin: 'bg-gradient-to-r from-blue-500 to-blue-600 text-white',
@@ -244,8 +300,8 @@ export default function Dashboard() {
                 />
             </div>
 
-            {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            {/* Quick Stats + Completion Time */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <QuickStatCard
                     icon={<AlertCircle className="w-6 h-6" />}
                     label="Pending Tickets"
@@ -257,6 +313,13 @@ export default function Dashboard() {
                     label="Completed Tickets"
                     value={stats.completedTickets}
                     color="green"
+                />
+                {/* New Completion Time Card */}
+                <CompletionTimeCard
+                    icon={<Timer className="w-6 h-6" />}
+                    label="Avg. Completion Time"
+                    value={completionStats.average_completion_formatted}
+                    totalCompleted={completionStats.total_completed_tickets}
                 />
             </div>
 
@@ -294,6 +357,69 @@ export default function Dashboard() {
                     )}
                 </ChartCard>
 
+                {/* New Completion Time by Priority Chart */}
+                <ChartCard title="Avg. Completion Time by Priority" icon={<Clock className="w-5 h-5" />}>
+                    {completionTimeData.datasets.length > 0 && (
+                        <Bar
+                            data={completionTimeData}
+                            options={{
+                                responsive: true,
+                                plugins: {
+                                    legend: { display: false },
+                                    tooltip: {
+                                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                        titleColor: 'white',
+                                        bodyColor: 'white',
+                                        borderColor: '#3B82F6',
+                                        borderWidth: 1,
+                                        callbacks: {
+                                            label: function(context) {
+                                                const hours = context.parsed.y;
+                                                if (hours < 1) {
+                                                    return `${Math.round(hours * 60)} minutes`;
+                                                } else if (hours < 24) {
+                                                    const h = Math.floor(hours);
+                                                    const m = Math.round((hours - h) * 60);
+                                                    return `${h}h ${m}m`;
+                                                } else {
+                                                    const d = Math.floor(hours / 24);
+                                                    const h = Math.round(hours % 24);
+                                                    return `${d}d ${h}h`;
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        grid: { color: 'rgba(0, 0, 0, 0.1)' },
+                                        ticks: {
+                                            color: '#6B7280',
+                                            callback: function(value) {
+                                                if (value < 1) {
+                                                    return Math.round(value * 60) + 'm';
+                                                } else if (value < 24) {
+                                                    return Math.round(value) + 'h';
+                                                } else {
+                                                    return Math.round(value / 24) + 'd';
+                                                }
+                                            }
+                                        }
+                                    },
+                                    x: {
+                                        grid: { display: false },
+                                        ticks: { color: '#6B7280' }
+                                    }
+                                }
+                            }}
+                        />
+                    )}
+                </ChartCard>
+            </div>
+
+            {/* Second Row Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                 <ChartCard title="Inventory by Category" icon={<Package className="w-5 h-5" />}>
                     <Doughnut
                         data={inventoryCategoryData}
@@ -318,6 +444,9 @@ export default function Dashboard() {
                         }}
                     />
                 </ChartCard>
+
+                {/* Performance Metrics */}
+                <PerformanceMetricsCard completionStats={completionStats} />
             </div>
 
             {/* Requisitions Chart */}
@@ -452,6 +581,69 @@ function ChartCard({
             </div>
             <div className="h-80">
                 {children}
+            </div>
+        </div>
+    );
+}
+
+// Add new CompletionTimeCard component
+function CompletionTimeCard({
+    icon,
+    label,
+    value,
+    totalCompleted
+}: {
+    icon: React.ReactNode;
+    label: string;
+    value: string;
+    totalCompleted: number;
+}) {
+    return (
+        <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-2xl shadow-lg p-6">
+            <div className="flex items-center justify-between">
+                <div>
+                    <div className="text-2xl font-bold mb-1">{value}</div>
+                    <div className="text-white/90 font-medium">{label}</div>
+                    <div className="text-white/70 text-sm mt-1">
+                        Based on {totalCompleted} completed tickets
+                    </div>
+                </div>
+                <div className="bg-white/20 rounded-xl p-3">
+                    {icon}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// Add new PerformanceMetricsCard component
+function PerformanceMetricsCard({ completionStats }: { completionStats: any }) {
+    return (
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+            <div className="flex items-center gap-3 mb-6">
+                <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-xl p-2">
+                    <Target className="w-5 h-5" />
+                </div>
+                <h2 className="text-xl font-bold text-gray-800">Performance Metrics</h2>
+            </div>
+
+            <div className="space-y-4">
+                {Object.entries(completionStats.completion_by_priority || {}).map(([priority, data]: [string, any]) => (
+                    <div key={priority} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                        <div className="flex items-center gap-3">
+                            <div className={`w-3 h-3 rounded-full ${
+                                priority === 'critical' ? 'bg-red-500' :
+                                priority === 'high' ? 'bg-amber-500' :
+                                priority === 'medium' ? 'bg-blue-500' : 'bg-green-500'
+                            }`}></div>
+                            <span className="font-semibold text-gray-700 capitalize">{priority}</span>
+                        </div>
+                        <div className="text-right">
+                            <div className="text-sm font-bold text-gray-800">{data.avg_formatted}</div>
+                            <div className="text-xs text-gray-500">{data.count} tickets</div>
+                        </div>
+                    </div>
+                ))}
             </div>
         </div>
     );

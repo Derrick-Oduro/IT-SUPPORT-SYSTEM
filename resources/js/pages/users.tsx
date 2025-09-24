@@ -13,9 +13,10 @@ type User = {
     id: number;
     name: string;
     email: string;
-    role?: { name: string };
+    role?: { name: string; id: number };
     created_at?: string;
     email_verified_at?: string;
+    is_active?: boolean; // Add this
 };
 
 export default function Users() {
@@ -72,19 +73,28 @@ export default function Users() {
         });
     };
 
-    const handleDelete = (userId: number) => {
-        if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-            setIsLoading(true);
-            axios.delete(`/api/users/${userId}`)
-                .then(() => {
-                    setUsers(users.filter(user => user.id !== userId));
+    const handleToggleStatus = (user: User) => {
+        const action = user.is_active ? 'deactivate' : 'activate';
+        const confirmMessage = user.is_active
+            ? 'Are you sure you want to deactivate this user? They will not be able to log in.'
+            : 'Are you sure you want to activate this user? They will be able to log in again.';
+
+        if (confirm(confirmMessage)) {
+            axios.patch(`/api/users/${user.id}/toggle-status`)
+                .then((response) => {
+                    // Update the user in the local state
+                    setUsers(users.map(u =>
+                        u.id === user.id
+                            ? { ...u, is_active: response.data.user.is_active }
+                            : u
+                    ));
+
+                    const status = response.data.user.is_active ? 'activated' : 'deactivated';
+                    console.log(`User ${status} successfully`);
                 })
                 .catch(error => {
-                    console.error('Error deleting user:', error);
-                    alert('Failed to delete user');
-                })
-                .finally(() => {
-                    setIsLoading(false);
+                    console.error('Error updating user status:', error);
+                    alert('Failed to update user status');
                 });
         }
     };
@@ -112,32 +122,43 @@ export default function Users() {
     };
 
     // Get badge color based on role
-    const getRoleBadge = (roleName?: string) => {
+    const getRoleBadge = (roleName?: string, isActive: boolean = true) => {
+        const baseClasses = "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm";
+
+        if (!isActive) {
+            return (
+                <span className={`${baseClasses} bg-gray-200 text-gray-600`}>
+                    <User className="h-3 w-3" />
+                    {roleName || 'N/A'} (Inactive)
+                </span>
+            );
+        }
+
         switch (roleName?.toLowerCase()) {
             case 'admin':
                 return (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-sm">
+                    <span className={`${baseClasses} bg-gradient-to-r from-purple-500 to-purple-600 text-white`}>
                         <Shield className="h-3 w-3" />
                         Admin
                     </span>
                 );
             case 'it agent':
                 return (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm">
+                    <span className={`${baseClasses} bg-gradient-to-r from-blue-500 to-blue-600 text-white`}>
                         <User className="h-3 w-3" />
                         IT Agent
                     </span>
                 );
             case 'staff':
                 return (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-gradient-to-r from-green-500 to-green-600 text-white shadow-sm">
+                    <span className={`${baseClasses} bg-gradient-to-r from-green-500 to-green-600 text-white`}>
                         <User className="h-3 w-3" />
                         Staff
                     </span>
                 );
             default:
                 return (
-                    <span className="inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                    <span className={`${baseClasses} bg-gray-100 text-gray-800`}>
                         {roleName || 'N/A'}
                     </span>
                 );
@@ -350,16 +371,31 @@ export default function Users() {
                                 {filteredUsers.map((user) => (
                                     <tr
                                         key={user.id}
-                                        className="hover:bg-gray-50 transition-colors duration-200"
+                                        className={`transition-colors duration-200 ${
+                                            user.is_active === false
+                                                ? 'bg-red-50 hover:bg-red-100'
+                                                : 'hover:bg-gray-50'
+                                        }`}
                                     >
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-4">
-                                                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                                                <div className={`h-12 w-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg ${
+                                                    user.is_active === false
+                                                        ? 'bg-gradient-to-br from-gray-400 to-gray-500'
+                                                        : 'bg-gradient-to-br from-blue-500 to-blue-600'
+                                                }`}>
                                                     {user.name.charAt(0).toUpperCase()}
                                                 </div>
                                                 <div>
-                                                    <div className="font-semibold text-gray-900 text-lg">
+                                                    <div className={`font-semibold text-lg flex items-center gap-2 ${
+                                                        user.is_active === false ? 'text-gray-500' : 'text-gray-900'
+                                                    }`}>
                                                         {user.name}
+                                                        {user.is_active === false && (
+                                                            <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                                                                Inactive
+                                                            </span>
+                                                        )}
                                                     </div>
                                                     <div className="text-sm text-gray-500">
                                                         ID: #{user.id}
@@ -370,17 +406,23 @@ export default function Users() {
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2">
                                                 <Mail className="h-4 w-4 text-gray-400" />
-                                                <span className="text-gray-900 font-medium">{user.email}</span>
+                                                <span className={`font-medium ${
+                                                    user.is_active === false ? 'text-gray-500' : 'text-gray-900'
+                                                }`}>
+                                                    {user.email}
+                                                </span>
                                             </div>
                                             {user.email_verified_at && (
                                                 <div className="text-xs text-green-600 mt-1">✓ Verified</div>
                                             )}
                                         </td>
                                         <td className="px-6 py-4">
-                                            {getRoleBadge(user.role?.name)}
+                                            {getRoleBadge(user.role?.name, user.is_active)}
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="text-gray-900 font-medium">
+                                            <div className={`font-medium ${
+                                                user.is_active === false ? 'text-gray-500' : 'text-gray-900'
+                                            }`}>
                                                 {formatDate(user.created_at)}
                                             </div>
                                         </td>
@@ -401,11 +443,23 @@ export default function Users() {
                                                     <Edit2 className="h-5 w-5" />
                                                 </button>
                                                 <button
-                                                    className="p-2 text-red-600 hover:text-red-900 hover:bg-red-50 rounded-xl transition-all duration-200"
-                                                    onClick={() => handleDelete(user.id)}
-                                                    title="Delete User"
+                                                    className={`p-2 rounded-xl transition-all duration-200 ${
+                                                        user.is_active === false
+                                                            ? 'text-green-600 hover:text-green-900 hover:bg-green-50'
+                                                            : 'text-red-600 hover:text-red-900 hover:bg-red-50'
+                                                    }`}
+                                                    onClick={() => handleToggleStatus(user)}
+                                                    title={user.is_active === false ? 'Activate User' : 'Deactivate User'}
                                                 >
-                                                    <Trash2 className="h-5 w-5" />
+                                                    {user.is_active === false ? (
+                                                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                        </svg>
+                                                    ) : (
+                                                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636" />
+                                                        </svg>
+                                                    )}
                                                 </button>
                                             </div>
                                         </td>
@@ -475,7 +529,7 @@ export default function Users() {
 
                             <div className="bg-gray-50 rounded-xl p-4">
                                 <h3 className="font-semibold text-gray-900 mb-2">Role & Permissions</h3>
-                                {getRoleBadge(selectedUser.role?.name)}
+                                {getRoleBadge(selectedUser.role?.name, selectedUser.is_active)}
                             </div>
 
                             <div className="bg-gray-50 rounded-xl p-4">

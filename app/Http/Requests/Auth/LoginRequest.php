@@ -39,25 +39,28 @@ class LoginRequest extends FormRequest
      */
     public function authenticate(): void
     {
-        $credentials = $this->only('email', 'password');
-        $role = $this->input('role');
+        $this->ensureIsNotRateLimited();
 
-        $user = \App\Models\User::where('email', $credentials['email'])->first();
+        // First check if user exists and is active
+        $user = \App\Models\User::where('email', $this->email)->first();
 
-        if (!$user || !\Hash::check($credentials['password'], $user->password)) {
+        if ($user && !$user->is_active) {
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'email' => 'Your account has been deactivated. Please contact an administrator.',
+            ]);
+        }
+
+        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+            RateLimiter::hit($this->throttleKey());
+
             throw ValidationException::withMessages([
                 'email' => __('auth.failed'),
             ]);
         }
 
-        // Check role match
-        if ($user->role && $user->role->name !== $role) {
-            throw ValidationException::withMessages([
-                'role' => 'You do not have permission to log in as this role.',
-            ]);
-        }
-
-        Auth::login($user, $this->boolean('remember'));
+        RateLimiter::clear($this->throttleKey());
     }
 
     /**

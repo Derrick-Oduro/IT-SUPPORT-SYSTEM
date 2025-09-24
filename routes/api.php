@@ -4,6 +4,7 @@ use App\Http\Controllers\StockTransactionController;
 use App\Http\Controllers\StockTransferController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UsersController;
+use App\Http\Controllers\UserController; // ADD THIS LINE ONLY
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\RequisitionController;
@@ -22,6 +23,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/api/tickets', [TicketController::class, 'store']);
     Route::post('/api/tickets/{id}/assign', [TicketController::class, 'assignTicket']);
     Route::post('/api/tickets/{id}/update', [TicketController::class, 'updateTicket']);
+    Route::get('/api/tickets/completion-stats', [TicketController::class, 'getCompletionStats']);
 
     Route::get('/api/users/agents', [UsersController::class, 'getAgents']);
 
@@ -58,4 +60,5 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/api/users', [UsersController::class, 'addUser']);
     Route::delete('/api/users/{id}', [UsersController::class, 'deleteUser']);
     Route::put('/api/users/{id}', [UsersController::class, 'updateUser']);
+    Route::patch('/api/users/{id}/toggle-status', [UsersController::class, 'toggleStatus']);
 });
