@@ -35,7 +35,6 @@ const navLinks = [
     { href: '/tickets', label: 'Tickets', icon: ClipboardList },
     { href: '/inventory', label: 'Inventory', icon: Package },
     { href: '/requisitions', label: 'Requisitions', icon: ClipboardList },
-    { href: '/stock-transfers', label: 'Stock Transfers', icon: MapPin, adminOnly: true },
     { href: '/users', label: 'Users', icon: Users, adminOnly: true },
     { href: '/settings', label: 'Settings', icon: Settings },
 ];
@@ -159,7 +158,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }, []);
 
     return (
-        <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="min-h-screen bg-gray-50">
             {/* Sidebar */}
             <Sidebar
                 className="fixed top-0 left-0 z-40 w-64 h-screen"
@@ -168,9 +167,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
             />
 
             {/* Main Content Area */}
-            <div className="ml-64 flex flex-col min-h-screen w-full">
+            <div className="ml-64 min-h-screen bg-gray-50">
                 {/* Topbar */}
-                <header className="sticky top-0 z-20 flex items-center justify-end px-6 py-4 bg-white/80 backdrop-blur-sm border-b border-gray-200/50 shadow-sm">
+                <header className="sticky top-0 z-20 flex items-center justify-end px-6 py-4 bg-white/95 backdrop-blur-md border-b border-gray-200/60 shadow-sm">
                     {/* Right side - only notifications now */}
                     <div className="flex items-center space-x-4">
                         {/* Notifications */}
@@ -264,7 +263,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                                                         </div>
                                                     </div>
                                                 ))}
-                                            </div>
+                            </div>
                                         )}
                                     </div>
                                 </div>
@@ -274,7 +273,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 p-6">
+                <main className="p-6 bg-gray-50">
                     {children}
                 </main>
             </div>

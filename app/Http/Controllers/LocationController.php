@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Location;
+use App\Models\AuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -69,6 +70,15 @@ class LocationController extends Controller
         $location->created_by = Auth::id();
         $location->save();
 
+        AuditLog::log(
+            'LOCATION_CREATE',
+            "Created location: {$location->name}",
+            'Location',
+            $location->id,
+            null,
+            $location->toArray()
+        );
+
         return response()->json($location, 201);
     }
 
@@ -114,6 +124,8 @@ class LocationController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
+        $oldValues = $location->getOriginal();
+
         // Update the location
         $location->update([
             'name' => $request->name,
@@ -121,6 +133,15 @@ class LocationController extends Controller
             'address' => $request->address,
             'is_active' => $request->has('is_active') ? $request->is_active : $location->is_active,
         ]);
+
+        AuditLog::log(
+            'LOCATION_UPDATE',
+            "Updated location: {$location->name}",
+            'Location',
+            $location->id,
+            $oldValues,
+            $location->getChanges()
+        );
 
         return response()->json($location);
     }
@@ -145,6 +166,16 @@ class LocationController extends Controller
         // Toggle status
         $location->is_active = !$location->is_active;
         $location->save();
+
+        $status = $location->is_active ? 'activated' : 'deactivated';
+        AuditLog::log(
+            'LOCATION_STATUS_CHANGE',
+            "Location {$location->name} has been {$status}",
+            'Location',
+            $location->id,
+            ['is_active' => !$location->is_active],
+            ['is_active' => $location->is_active]
+        );
 
         return response()->json([
             'message' => 'Location status updated successfully',
@@ -182,5 +213,38 @@ class LocationController extends Controller
             ->get();
 
         return response()->json($locations);
+    }
+
+    /**
+     * Delete a location
+     */
+    public function destroy($id)
+    {
+        if (Auth::user()->role->name !== 'Admin') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        try {
+            $location = Location::findOrFail($id);
+
+            // Check if location is being used
+            if ($location->inventoryItems()->count() > 0) {
+                return response()->json(['message' => 'Cannot delete location that is in use by inventory items'], 400);
+            }
+
+            AuditLog::log(
+                'LOCATION_DELETE',
+                "Deleted location: {$location->name}",
+                'Location',
+                $location->id,
+                $location->toArray(),
+                null
+            );
+
+            $location->delete();
+            return response()->json(['message' => 'Location deleted successfully']);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Error deleting location'], 500);
+        }
     }
 }

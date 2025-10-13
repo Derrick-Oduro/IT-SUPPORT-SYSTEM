@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Ticket;
 use App\Models\TicketUpdate;
 use App\Models\User;
+use App\Models\AuditLog; // Add this import at the top
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Notifications\TicketNotification;
@@ -98,6 +99,17 @@ class TicketController extends Controller
             ]));
         }
 
+        $ticket->save();
+
+        AuditLog::log(
+            'TICKET_CREATE',
+            "Created ticket: {$ticket->title}",
+            'Ticket',
+            $ticket->id,
+            null,
+            $ticket->toArray()
+        );
+
         return response()->json($ticket, 201);
     }
 
@@ -123,8 +135,14 @@ class TicketController extends Controller
         }
 
         $agent = User::findOrFail($request->agent_id);
+
         if ($agent->role->name !== 'IT Agent') {
             return response()->json(['message' => 'Selected user is not an IT agent'], 400);
+        }
+
+        // Check if the agent is active
+        if (!$agent->is_active) {
+            return response()->json(['message' => 'Cannot assign ticket to inactive user'], 400);
         }
 
         $ticket->assigned_to = $request->agent_id;
@@ -136,7 +154,7 @@ class TicketController extends Controller
             'message' => 'Ticket has been assigned to ' . $agent->name,
         ]);
 
-        // Notify the assigned agent
+        // Only notify if agent is active
         $agent->notify(new TicketNotification([
             'title' => 'Ticket Assigned to You',
             'message' => "You have been assigned ticket: {$ticket->title}",
@@ -153,6 +171,16 @@ class TicketController extends Controller
             'action_url' => '/tickets',
             'icon' => 'ticket'
         ]));
+
+        $agent = User::findOrFail($request->agent_id);
+        AuditLog::log(
+            'TICKET_ASSIGN',
+            "Assigned ticket '{$ticket->title}' to {$agent->name}",
+            'Ticket',
+            $ticket->id,
+            ['assigned_to' => null],
+            ['assigned_to' => $agent->id]
+        );
 
         return response()->json(['message' => 'Ticket assigned successfully']);
     }
@@ -221,6 +249,15 @@ class TicketController extends Controller
                 ]));
             }
         }
+
+        AuditLog::log(
+            'TICKET_UPDATE',
+            "Updated ticket status: {$ticket->title} -> {$ticket->status}",
+            'Ticket',
+            $ticket->id,
+            ['status' => $ticket->getOriginal('status')],
+            ['status' => $ticket->status]
+        );
 
         return response()->json(['message' => 'Ticket updated successfully']);
     }

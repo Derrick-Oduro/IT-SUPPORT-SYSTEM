@@ -8,6 +8,7 @@ type ITAgent = {
     id: number;
     name: string;
     email: string;
+    is_active?: boolean;
 };
 
 type Ticket = {
@@ -37,7 +38,16 @@ export default function AssignTicketModal({ show, onClose, onSuccess, ticket }: 
 
     useEffect(() => {
         if (show) {
-            fetchITAgents();
+            // Fetch IT agents who are active
+            axios.get('/api/users/agents?active_only=true')
+                .then(response => {
+                    setITAgents(response.data);
+                    setFilteredITAgents(response.data);
+                })
+                .catch(error => {
+                    console.error('Error fetching agents:', error);
+                    setError('Failed to load agents');
+                });
         }
     }, [show]);
 
@@ -204,24 +214,39 @@ export default function AssignTicketModal({ show, onClose, onSuccess, ticket }: 
                                         key={agent.id}
                                         className={`flex items-center p-4 cursor-pointer hover:bg-gray-50 transition-all duration-200 ${
                                             index !== filteredITAgents.length - 1 ? 'border-b border-gray-100' : ''
-                                        } ${selectedITAgent === agent.id ? 'bg-blue-50 border-blue-200' : ''}`}
-                                        onClick={() => setSelectedITAgent(agent.id)}
+                                        } ${selectedITAgent === agent.id ? 'bg-blue-50 border-blue-200' : ''} ${
+                                            agent.is_active === false ? 'opacity-60' : ''
+                                        }`}
+                                        onClick={() => agent.is_active !== false && setSelectedITAgent(agent.id)}
                                     >
-                                        <div className={`h-12 w-12 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center mr-4 shadow-lg ${
+                                        <div className={`h-12 w-12 rounded-full bg-gradient-to-br ${
+                                            agent.is_active === false
+                                                ? 'from-gray-400 to-gray-500'
+                                                : 'from-indigo-500 to-indigo-600'
+                                        } flex items-center justify-center mr-4 shadow-lg ${
                                             selectedITAgent === agent.id ? 'ring-2 ring-blue-500 ring-offset-2' : ''
                                         }`}>
                                             <User className="h-6 w-6 text-white" />
                                         </div>
                                         <div className="flex-1">
-                                            <p className="font-semibold text-gray-900">{agent.name}</p>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <p className="font-semibold text-gray-900">{agent.name}</p>
+                                                {agent.is_active === false && (
+                                                    <span className="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded-full">
+                                                        Inactive
+                                                    </span>
+                                                )}
+                                            </div>
                                             <p className="text-sm text-gray-500">{agent.email}</p>
                                         </div>
                                         <div className={`flex items-center justify-center h-6 w-6 rounded-full border-2 transition-all duration-200 ${
                                             selectedITAgent === agent.id
                                                 ? 'border-blue-500 bg-blue-500'
+                                                : agent.is_active === false
+                                                ? 'border-gray-300 bg-gray-100'
                                                 : 'border-gray-300'
                                         }`}>
-                                            {selectedITAgent === agent.id && (
+                                            {selectedITAgent === agent.id && agent.is_active !== false && (
                                                 <div className="h-2 w-2 rounded-full bg-white"></div>
                                             )}
                                         </div>

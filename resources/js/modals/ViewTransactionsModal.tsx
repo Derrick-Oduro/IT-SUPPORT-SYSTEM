@@ -110,7 +110,7 @@ export default function ViewTransactionsModal({ show, onClose, item }: ViewTrans
               <h3 className="font-bold text-xl text-gray-800 mb-1">{item.name}</h3>
               <p className="text-sm text-gray-600 font-mono bg-white px-2 py-0.5 rounded mb-1">SKU: {item.sku}</p>
               <p className="text-sm font-semibold text-blue-600">
-                Current Stock: <span className="text-lg">{item.quantity}</span> {item.unit_of_measure?.abbreviation || ''}
+                Current Stock: <span className="text-lg">{item.quantity}</span>
               </p>
             </div>
           </div>
@@ -199,8 +199,8 @@ export default function ViewTransactionsModal({ show, onClose, item }: ViewTrans
                                   : 'bg-red-100 text-red-800'
                               }`}>
                                 {transaction.transaction_type === 'add'
-                                  ? `+${transaction.quantity} ${item.unit_of_measure?.abbreviation || 'units'}`
-                                  : `-${transaction.quantity} ${item.unit_of_measure?.abbreviation || 'units'}`}
+                                  ? `+${transaction.quantity}`
+                                  : `-${transaction.quantity}`}
                               </span>
                               <span className="text-sm font-mono bg-gray-100 px-3 py-1 rounded-full text-gray-600">
                                 {transaction.previous_quantity} → {

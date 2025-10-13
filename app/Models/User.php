@@ -28,19 +28,10 @@ class User extends Authenticatable
         'is_active' => 'boolean', // Make sure this is here
     ];
 
-    // Add this method to prevent inactive users from logging in
+    // Add this method to check if user is active
     public function isActive()
     {
         return $this->is_active;
-    }
-
-    // Override the default authentication to check if user is active
-    public function getAuthIdentifier()
-    {
-        if (!$this->is_active) {
-            return null; // This will fail authentication
-        }
-        return parent::getAuthIdentifier();
     }
 
     /**

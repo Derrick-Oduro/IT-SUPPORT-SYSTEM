@@ -8,7 +8,7 @@ use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 class Kernel extends ConsoleKernel
 {
     /**
-     * The application's command schedule.
+     * Define the application's command schedule.
      */
     protected function schedule(Schedule $schedule): void
     {
@@ -29,11 +29,6 @@ class Kernel extends ConsoleKernel
         require base_path('routes/console.php');
     }
 
-    /**
-     * The application's middleware aliases.
-     *
-     * @var array
-     */
     protected $middlewareAliases = [
         // ... existing middleware
         'active.user' => \App\Http\Middleware\CheckUserActive::class,

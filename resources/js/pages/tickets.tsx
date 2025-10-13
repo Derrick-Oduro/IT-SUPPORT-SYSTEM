@@ -492,12 +492,27 @@ export default function Tickets() {
                                                         <User className="h-4 w-4" />
                                                         Assigned Agent
                                                     </h4>
-                                                    <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl flex items-center gap-3">
-                                                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-semibold">
+                                                    <div className={`border p-4 rounded-xl flex items-center gap-3 ${
+                                                        ticket.assigned_to.is_active === false
+                                                            ? 'bg-red-50 border-red-200'
+                                                            : 'bg-blue-50 border-blue-200'
+                                                    }`}>
+                                                        <div className={`h-10 w-10 rounded-full flex items-center justify-center text-white font-semibold ${
+                                                            ticket.assigned_to.is_active === false
+                                                                ? 'bg-gradient-to-br from-red-500 to-red-600'
+                                                                : 'bg-gradient-to-br from-blue-500 to-blue-600'
+                                                        }`}>
                                                             {ticket.assigned_to.name.charAt(0).toUpperCase()}
                                                         </div>
-                                                        <div>
-                                                            <p className="font-semibold text-gray-800">{ticket.assigned_to.name}</p>
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="font-semibold text-gray-800">{ticket.assigned_to.name}</p>
+                                                                {ticket.assigned_to.is_active === false && (
+                                                                    <span className="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded-full">
+                                                                        Inactive
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                             <p className="text-sm text-gray-600">{ticket.assigned_to.email}</p>
                                                         </div>
                                                     </div>

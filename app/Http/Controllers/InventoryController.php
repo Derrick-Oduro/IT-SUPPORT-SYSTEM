@@ -8,6 +8,7 @@ use App\Models\UnitOfMeasure;
 use App\Models\InventoryTransaction;
 use App\Models\Location;
 use App\Models\User;
+use App\Models\AuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -178,6 +179,15 @@ class InventoryController extends Controller
             \Log::error('Error sending notifications: ' . $e->getMessage());
         }
 
+        AuditLog::log(
+            'INVENTORY_CREATE',
+            "Created inventory item: {$item->name}",
+            'InventoryItem',
+            $item->id,
+            null,
+            $item->toArray()
+        );
+
         return response()->json($item->load(['category', 'unitOfMeasure']), 201);
     }
 
@@ -217,6 +227,8 @@ class InventoryController extends Controller
             $item->image_path = $imagePath;
         }
 
+        $oldValues = $item->getOriginal();
+
         $item->name = $request->name;
         $item->sku = $request->sku;
         $item->description = $request->description;
@@ -229,6 +241,15 @@ class InventoryController extends Controller
         $item->updated_by = Auth::id();
 
         $item->save();
+
+        AuditLog::log(
+            'INVENTORY_UPDATE',
+            "Updated inventory item: {$item->name}",
+            'InventoryItem',
+            $item->id,
+            $oldValues,
+            $item->getChanges()
+        );
 
         return response()->json($item->load(['category', 'unitOfMeasure']));
     }
@@ -285,6 +306,15 @@ class InventoryController extends Controller
             'notes' => $request->notes,
             'user_id' => Auth::id(),
         ]);
+
+        AuditLog::log(
+            'INVENTORY_ADJUST',
+            "Adjusted inventory for {$item->name}: {$adjustmentType} {$adjustmentQty} (was {$quantityBefore}, now {$item->quantity})",
+            'InventoryItem',
+            $item->id,
+            ['quantity' => $quantityBefore],
+            ['quantity' => $item->quantity, 'adjustment_type' => $adjustmentType]
+        );
 
         // Check for low stock and send notifications
         if ($item->quantity <= $item->reorder_level) {
@@ -344,6 +374,15 @@ class InventoryController extends Controller
             'description' => $request->description,
         ]);
 
+        AuditLog::log(
+            'CATEGORY_CREATE',
+            "Created category: {$category->name}",
+            'ItemCategory',
+            $category->id,
+            null,
+            $category->toArray()
+        );
+
         return response()->json($category, 201);
     }
 
@@ -371,6 +410,89 @@ class InventoryController extends Controller
     }
 
     /**
+     * Get all categories
+     */
+    public function getCategories()
+    {
+        try {
+            $categories = ItemCategory::orderBy('name')->get();
+            return response()->json($categories);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to fetch categories'], 500);
+        }
+    }
+
+    /**
+     * Get all units
+     */
+    public function getUnits()
+    {
+        try {
+            $units = UnitOfMeasure::orderBy('name')->get();
+            return response()->json($units);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to fetch units'], 500);
+        }
+    }
+
+    /**
+     * Delete a category
+     */
+    public function destroyCategory($id)
+    {
+        if (Auth::user()->role->name !== 'Admin') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        try {
+            $category = ItemCategory::findOrFail($id);
+
+            // Check if category is being used
+            if ($category->items()->count() > 0) {
+                return response()->json(['message' => 'Cannot delete category that is in use by inventory items'], 400);
+            }
+
+            AuditLog::log(
+                'CATEGORY_DELETE',
+                "Deleted category: {$category->name}",
+                'ItemCategory',
+                $category->id,
+                $category->toArray(),
+                null
+            );
+
+            $category->delete();
+            return response()->json(['message' => 'Category deleted successfully']);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Error deleting category'], 500);
+        }
+    }
+
+    /**
+     * Delete a unit
+     */
+    public function destroyUnit($id)
+    {
+        if (Auth::user()->role->name !== 'Admin') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        try {
+            $unit = UnitOfMeasure::findOrFail($id);
+
+            // Check if unit is being used
+            if ($unit->items()->count() > 0) {
+                return response()->json(['message' => 'Cannot delete unit that is in use by inventory items'], 400);
+            }
+
+            $unit->delete();
+            return response()->json(['message' => 'Unit deleted successfully']);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Error deleting unit'], 500);
+        }
+    }
+
+    /**
      * Remove the specified inventory item.
      */
     public function destroy($id)
@@ -382,6 +504,15 @@ class InventoryController extends Controller
             if ($item->image_path) {
                 Storage::disk('public')->delete($item->image_path);
             }
+
+            AuditLog::log(
+                'INVENTORY_DELETE',
+                "Deleted inventory item: {$item->name}",
+                'InventoryItem',
+                $item->id,
+                $item->toArray(),
+                null
+            );
 
             // Option 1: Soft delete (if you've added softDeletes to your model)
             // $item->delete();

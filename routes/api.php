@@ -10,6 +10,7 @@ use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\RequisitionController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\AuditLogController; // ADD THIS LINE
 
 Route::middleware(['web', 'auth'])->group(function () {
     // Notification routes - THESE MUST BE FIRST
@@ -18,7 +19,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/api/notifications/{id}/mark-read', [NotificationController::class, 'markAsRead']);
     Route::post('/api/notifications/test', [NotificationController::class, 'test']);
 
-    // Existing ticket routes
+    // Ticket routes
     Route::get('/api/tickets', [TicketController::class, 'index']);
     Route::post('/api/tickets', [TicketController::class, 'store']);
     Route::post('/api/tickets/{id}/assign', [TicketController::class, 'assignTicket']);
@@ -47,13 +48,16 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/api/locations', [LocationController::class, 'index']);
     Route::post('/api/locations', [LocationController::class, 'store']);
     Route::put('/api/locations/{id}', [LocationController::class, 'update']);
+    Route::delete('/api/locations/{id}', [LocationController::class, 'destroy']);
     Route::post('/api/locations/{id}/toggle-status', [LocationController::class, 'toggleStatus']);
     Route::get('/api/locations/stats', [LocationController::class, 'getLocationsWithStats']);
 
-    // Stock routes
-    Route::get('/api/stock-transactions', [StockTransactionController::class, 'index']);
-    Route::post('/api/stock-transfers', [StockTransferController::class, 'store']);
-    Route::get('/api/stock-transfers', [StockTransferController::class, 'index']);
+    // Category and Unit routes
+    Route::get('/api/inventory/categories', [InventoryController::class, 'getCategories']);
+    Route::delete('/api/inventory/categories/{id}', [InventoryController::class, 'destroyCategory']);
+    Route::get('/api/inventory/units', [InventoryController::class, 'getUnits']);
+    Route::delete('/api/inventory/units/{id}', [InventoryController::class, 'destroyUnit']);
+
 
     // User routes
     Route::get('/api/users', [UsersController::class, 'getAllUsers']);
@@ -61,4 +65,10 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::delete('/api/users/{id}', [UsersController::class, 'deleteUser']);
     Route::put('/api/users/{id}', [UsersController::class, 'updateUser']);
     Route::patch('/api/users/{id}/toggle-status', [UsersController::class, 'toggleStatus']);
+
+    // Audit log routes (Admin only)
+    Route::get('/api/audit-logs', [AuditLogController::class, 'index']);
+    Route::get('/api/audit-logs/export', [AuditLogController::class, 'export']);
+    Route::get('/api/audit-logs/actions', [AuditLogController::class, 'getActions']);
+    Route::get('/api/audit-logs/users', [AuditLogController::class, 'getUsers']);
 });

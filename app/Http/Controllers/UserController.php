@@ -109,4 +109,23 @@ class UserController extends Controller
             return response()->json(['error' => 'Failed to fetch roles'], 500);
         }
     }
+
+    public function getItAgents(Request $request)
+    {
+        try {
+            $query = User::whereHas('role', function($q) {
+                $q->where('name', 'IT Agent');
+            });
+
+            // Filter only active users if requested
+            if ($request->query('active_only') === 'true') {
+                $query->where('is_active', true);
+            }
+
+            $agents = $query->with('role')->get();
+            return response()->json($agents);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to fetch IT agents'], 500);
+        }
+    }
 }

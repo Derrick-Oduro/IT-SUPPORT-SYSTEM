@@ -106,7 +106,7 @@ export default function AdjustQuantityModal({ show, onClose, onSuccess, item }: 
             <div>
               <p className="font-semibold text-gray-900 text-lg">{item.name}</p>
               <p className="text-sm text-gray-600 font-medium">
-                Current Stock: <span className="text-blue-600 font-bold">{item.quantity}</span> {item.unit_of_measure?.abbreviation || ''}
+                Current Stock: <span className="text-blue-600 font-bold">{item.quantity}</span>
               </p>
               <p className="text-xs text-gray-500 font-mono bg-white px-2 py-0.5 rounded mt-1">
                 SKU: {item.sku}

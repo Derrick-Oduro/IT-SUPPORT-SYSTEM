@@ -48,13 +48,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('settings/locations');
     })->name('settings.locations')->middleware('role:Admin');
 
-    Route::get('settings/notifications', function () {
-        return Inertia::render('settings/notifications');
-    })->name('settings.notifications');
-
-    Route::get('settings/backup-restore', function () {
-        return Inertia::render('settings/backup-restore');
-    })->name('settings.backup-restore')->middleware('role:Admin');
 
     Route::get('settings/audit-logs', function () {
         return Inertia::render('settings/audit-logs');

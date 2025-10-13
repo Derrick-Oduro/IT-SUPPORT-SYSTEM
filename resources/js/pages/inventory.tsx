@@ -20,6 +20,7 @@ import CreateCategoryModal from '@/modals/CreateCategoryModal';
 import CreateUnitModal from '@/modals/CreateUnitModal';
 import CreateLocationModal from '@/modals/CreateLocationModal';
 import ViewLocationsModal from '@/modals/ViewLocationsModal';
+import ManageInventoryOptionsModal from '@/modals/ManageInventoryOptionsModal';
 
 type Category = {
     id: number;
@@ -93,6 +94,7 @@ export default function Inventory() {
     const [showCreateUnitModal, setShowCreateUnitModal] = useState(false);
     const [showCreateLocationModal, setShowCreateLocationModal] = useState(false);
     const [showViewLocationsModal, setShowViewLocationsModal] = useState(false);
+    const [showManageOptionsModal, setShowManageOptionsModal] = useState(false);
     const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
 
     useEffect(() => {
@@ -161,7 +163,7 @@ export default function Inventory() {
 
         // Apply low stock filter
         if (showLowStock) {
-            filtered = filtered.filter(item => item.quantity <= item.reorder_level);
+            filtered = filtered.filter(item => Number(item.quantity) <= Number(item.reorder_level));
         }
 
         // Apply inactive filter
@@ -235,15 +237,26 @@ export default function Inventory() {
         setShowViewLocationsModal(true);
     };
 
+    const handleManageOptions = () => {
+        setShowManageOptionsModal(true);
+    };
+
     const renderStockStatus = (item: InventoryItem) => {
-        if (item.quantity <= 0) {
+        // Convert to numbers for proper comparison
+        const quantity = Number(item.quantity);
+        const reorderLevel = Number(item.reorder_level);
+
+        console.log(`Item: ${item.name}, Quantity: ${quantity} (type: ${typeof quantity}), Reorder Level: ${reorderLevel} (type: ${typeof reorderLevel})`);
+
+        if (quantity <= 0) {
             return (
                 <span className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white shadow-sm">
                     <AlertTriangle className="h-3 w-3" />
                     Out of Stock
                 </span>
             );
-        } else if (item.quantity <= item.reorder_level) {
+        } else if (quantity <= reorderLevel) { // Now comparing numbers instead of strings
+            console.log(`LOW STOCK: ${item.name} - Quantity: ${quantity}, Reorder: ${reorderLevel}`);
             return (
                 <span className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-sm">
                     <AlertTriangle className="h-3 w-3" />
@@ -251,6 +264,7 @@ export default function Inventory() {
                 </span>
             );
         } else {
+            console.log(`IN STOCK: ${item.name} - Quantity: ${quantity}, Reorder: ${reorderLevel}`);
             return (
                 <span className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full bg-gradient-to-r from-green-500 to-green-600 text-white shadow-sm">
                     <CheckCircle className="h-3 w-3" />
@@ -275,11 +289,15 @@ export default function Inventory() {
         if (!items || !Array.isArray(items)) return { total: 0, lowStock: 0, outOfStock: 0, totalValue: 0 };
 
         const total = items.filter(item => item.is_active).length;
-        const lowStock = items.filter(item => item.is_active && item.quantity <= item.reorder_level && item.quantity > 0).length;
-        const outOfStock = items.filter(item => item.is_active && item.quantity <= 0).length;
+        const lowStock = items.filter(item =>
+            item.is_active &&
+            Number(item.quantity) <= Number(item.reorder_level) &&
+            Number(item.quantity) > 0
+        ).length;
+        const outOfStock = items.filter(item => item.is_active && Number(item.quantity) <= 0).length;
         const totalValue = items
             .filter(item => item.is_active && item.unit_price)
-            .reduce((sum, item) => sum + (item.quantity * (item.unit_price || 0)), 0);
+            .reduce((sum, item) => sum + (Number(item.quantity) * (Number(item.unit_price) || 0)), 0);
 
         return { total, lowStock, outOfStock, totalValue };
     };
@@ -443,11 +461,11 @@ export default function Inventory() {
                             </div>
                             <div className="flex items-end">
                                 <button
-                                    onClick={handleViewLocations}
+                                    onClick={handleManageOptions}
                                     className="w-full bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white font-semibold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2"
                                 >
-                                    <MapPin className="h-4 w-4" />
-                                    Manage Locations
+                                    <Package className="h-4 w-4" />
+                                    Manage
                                 </button>
                             </div>
                         </div>
@@ -623,7 +641,7 @@ export default function Inventory() {
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="text-lg font-bold text-gray-900">
-                                                {item.quantity} {item.unit_of_measure?.abbreviation || ''}
+                                                {item.quantity}
                                             </div>
                                             <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full inline-block">
                                                 Reorder at: {item.reorder_level}
@@ -747,6 +765,12 @@ export default function Inventory() {
                 show={showViewLocationsModal}
                 onClose={() => setShowViewLocationsModal(false)}
                 locations={locations}
+            />
+
+            <ManageInventoryOptionsModal
+                show={showManageOptionsModal}
+                onClose={() => setShowManageOptionsModal(false)}
+                onSuccess={fetchInventoryData}
             />
         </AppLayout>
     );

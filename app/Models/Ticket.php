@@ -133,14 +133,14 @@ class Ticket extends Model
     }
 
     // Relationships
-    public function submittedBy()
-    {
-        return $this->belongsTo(User::class, 'submitted_by');
-    }
-
     public function assignedTo()
     {
-        return $this->belongsTo(User::class, 'assigned_to');
+        return $this->belongsTo(User::class, 'assigned_to')->withDefault();
+    }
+
+    public function submittedBy()
+    {
+        return $this->belongsTo(User::class, 'submitted_by')->withDefault();
     }
 
     public function updates()

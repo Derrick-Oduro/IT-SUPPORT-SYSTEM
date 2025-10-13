@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\AuditLog;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rules\Password;
@@ -50,6 +51,15 @@ class UsersController extends Controller
             'password' => Hash::make($request->password),
             'role_id' => $request->role
         ]);
+
+        AuditLog::log(
+            'USER_CREATE',
+            "Created user account: {$user->name} ({$user->email})",
+            'User',
+            $user->id,
+            null,
+            $user->toArray()
+        );
     }
 
     public function deleteUser($id)
@@ -66,6 +76,15 @@ class UsersController extends Controller
             if (Auth::id() === $user->id) {
                 return response()->json(['message' => 'You cannot delete your own account'], 400);
             }
+
+            AuditLog::log(
+                'USER_DELETE',
+                "Deleted user: {$user->name} ({$user->email})",
+                'User',
+                $user->id,
+                $user->toArray(),
+                null
+            );
 
             $user->delete();
 
@@ -98,7 +117,18 @@ class UsersController extends Controller
                 $user->password = Hash::make($request->password);
             }
 
+            $oldValues = $user->getOriginal();
+
             $user->save();
+
+            AuditLog::log(
+                'USER_UPDATE',
+                "Updated user: {$user->name}",
+                'User',
+                $user->id,
+                $oldValues,
+                $user->getChanges()
+            );
 
             return response()->json([
                 'message' => 'User updated successfully',
@@ -111,16 +141,22 @@ class UsersController extends Controller
     /**
      * Get IT agents for ticket assignment
      */
-    public function getAgents()
+    public function getAgents(Request $request)
     {
         try {
             // Get users with IT Agent role (role_id = 2)
-            $agents = User::with('role')
+            $query = User::with('role')
                 ->whereHas('role', function ($query) {
                     $query->where('name', 'IT Agent');
                 })
-                ->orWhere('role_id', 2)
-                ->get(['id', 'name', 'email']);
+                ->orWhere('role_id', 2);
+
+            // Filter only active users if requested
+            if ($request->query('active_only') === 'true') {
+                $query->where('is_active', true);
+            }
+
+            $agents = $query->get(['id', 'name', 'email', 'is_active']);
 
             return response()->json($agents);
         } catch (\Exception $e) {
@@ -151,6 +187,14 @@ class UsersController extends Controller
             $user->update(['is_active' => !$user->is_active]);
 
             $status = $user->is_active ? 'activated' : 'deactivated';
+            AuditLog::log(
+                'USER_STATUS_CHANGE',
+                "User {$user->name} has been {$status}",
+                'User',
+                $user->id,
+                ['is_active' => !$user->is_active],
+                ['is_active' => $user->is_active]
+            );
 
             return response()->json([
                 'message' => "User has been {$status} successfully",
