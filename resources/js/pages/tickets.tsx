@@ -33,8 +33,9 @@ type Ticket = {
     };
     assigned_to?: {
         id: number;
-        name: string;
-        email: string;
+        name?: string; // Make this optional
+        email?: string; // Make this optional
+        is_active?: boolean;
     } | null;
     updates?: {
         id: number;
@@ -502,18 +503,18 @@ export default function Tickets() {
                                                                 ? 'bg-gradient-to-br from-red-500 to-red-600'
                                                                 : 'bg-gradient-to-br from-blue-500 to-blue-600'
                                                         }`}>
-                                                            {ticket.assigned_to.name.charAt(0).toUpperCase()}
+                                                            {ticket.assigned_to.name ? ticket.assigned_to.name.charAt(0).toUpperCase() : '?'}
                                                         </div>
                                                         <div className="flex-1">
                                                             <div className="flex items-center gap-2">
-                                                                <p className="font-semibold text-gray-800">{ticket.assigned_to.name}</p>
+                                                                <p className="font-semibold text-gray-800">{ticket.assigned_to.name || 'Unknown User'}</p>
                                                                 {ticket.assigned_to.is_active === false && (
                                                                     <span className="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded-full">
                                                                         Inactive
                                                                     </span>
                                                                 )}
                                                             </div>
-                                                            <p className="text-sm text-gray-600">{ticket.assigned_to.email}</p>
+                                                            <p className="text-sm text-gray-600">{ticket.assigned_to.email || 'No email provided'}</p>
                                                         </div>
                                                     </div>
                                                 </div>
